@@ -489,3 +489,85 @@ tr:last-child td {
   color: var(--ink-soft);
   margin-bottom: 18px;
 }
+
+/* TOPBAR extras */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px;
+}
+.link-btn:hover {
+  color: var(--ink);
+}
+
+/* AUTH PAGES */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  padding: 24px;
+}
+.auth-card {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 360px;
+}
+.auth-brand {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.auth-card h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+.auth-card .btn-primary {
+  width: 100%;
+  margin-top: 6px;
+}
+.auth-error {
+  border-color: var(--not-achieved);
+  background: var(--not-achieved-bg);
+  color: var(--not-achieved);
+}
+.field input {
+  width: 100%;
+  border: 1px solid var(--rule-strong);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fafaf8;
+  color: var(--ink);
+}
+.field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.mfa-qr {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+}
+.mfa-secret {
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
+  margin: 0 0 18px 0;
+  word-break: break-all;
+}

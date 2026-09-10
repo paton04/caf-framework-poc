@@ -16,7 +16,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
       <div className="main">
         <div className="topbar">
           <div className="org">
-            <strong>SGN</strong> — CAF Self-Assessment (Trial)
+            <strong>Assurance Register</strong> — CAF Self-Assessment (Trial)
           </div>
           <div className="topbar-right">
             <div className="role-pill">{user?.email ?? "SIGNED IN"}</div>

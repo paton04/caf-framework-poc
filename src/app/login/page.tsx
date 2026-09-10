@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 // Invite-only: there is no signup form here on purpose. Accounts are created
-// by an SGN Owner/Admin (currently via the Supabase dashboard — see the
-// setup notes) and the user sets their own password on first login.
+// by an Owner/Admin (currently via the Supabase dashboard — see the setup
+// notes) and the user sets their own password on first login.
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="auth-brand">Assurance Register</div>
         <h1>Sign in</h1>
         <p className="page-sub">
-          Accounts are invite-only. Use the email your SGN Owner/Admin invited you with.
+          Accounts are invite-only. Use the email your Owner/Admin invited you with.
         </p>
 
         {error && <div className="banner auth-error">{error}</div>}

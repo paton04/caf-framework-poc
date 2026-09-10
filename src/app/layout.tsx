@@ -16,7 +16,7 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "Assurance Register — CAF Self-Assessment (Trial)",
-  description: "CAF/NIS compliance evidence tracking trial for SGN.",
+  description: "CAF/NIS compliance evidence tracking trial.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

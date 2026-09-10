@@ -13,8 +13,8 @@ export default function SuppliersPage() {
       <h1 className="page-title">Suppliers</h1>
       <div className="banner">
         Supplier accounts can only see and submit their own evidence. They
-        cannot see SGN&apos;s internal narrative, other suppliers, or
-        unrelated sections.
+        cannot see internal narrative, other suppliers, or unrelated
+        sections.
       </div>
       <table>
         <thead>

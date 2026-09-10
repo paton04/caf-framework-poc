@@ -472,7 +472,7 @@ tr:last-child td {
   border: 1px solid var(--rule-strong);
   color: var(--ink-soft);
 }
-.role-tag-sgn {
+.role-tag-internal {
   border-color: var(--accent);
   color: var(--accent);
 }

@@ -9,6 +9,15 @@ export default async function OverviewPage() {
   const { user, role } = await getSessionAndRole();
   if (!user) redirect("/login");
 
+  if (role === null) {
+    return (
+      <div className="banner">
+        Your account doesn&apos;t have a role assigned yet. Contact your
+        Owner/Admin — they can set this from the admin page.
+      </div>
+    );
+  }
+
   if (role === "supplier") {
     const igps = await getSupplierIgps(await createClient(), user.id);
     return (

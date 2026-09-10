@@ -21,8 +21,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
           </div>
           <div className="topbar-right">
             <div className="role-pill">
-              {user?.email ?? "SIGNED IN"}
-              {role && ` — ${ROLE_LABEL[role]}`}
+              {user?.email ?? "SIGNED IN"} — {role ? ROLE_LABEL[role] : "No role assigned"}
             </div>
             <form action={signOut}>
               <button className="link-btn" type="submit">

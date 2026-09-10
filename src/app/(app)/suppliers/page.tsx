@@ -3,9 +3,11 @@ import { getSuppliers } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 
+// Internal roles only — allow-listed so an unassigned account (role ===
+// null) is denied too, not silently treated as internal.
 export default async function SuppliersPage() {
   const { role } = await getSessionAndRole();
-  if (role === "supplier") redirect("/");
+  if (role !== "owner_admin" && role !== "contributor") redirect("/");
 
   const suppliers = await getSuppliers(await createClient());
 

@@ -6,9 +6,12 @@ import { getSessionAndRole } from "@/lib/auth";
 // Review status / expiry tracking (the columns the old demo data had)
 // isn't part of the schema yet — that's Epic 3's evidence-review workflow.
 // This just lists what's actually been uploaded, for now.
+//
+// Internal roles only — allow-listed so an unassigned account (role ===
+// null) is denied too, not silently treated as internal.
 export default async function EvidencePage() {
   const { role } = await getSessionAndRole();
-  if (role === "supplier") redirect("/");
+  if (role !== "owner_admin" && role !== "contributor") redirect("/");
 
   const evidenceLibrary = await getEvidenceLibrary(await createClient());
 

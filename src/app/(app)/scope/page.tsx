@@ -3,11 +3,14 @@ import { getScopeItems } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 
-// Not part of a supplier's restricted view — RLS already blocks their reads
-// here too, but redirecting keeps a mistaken direct link from just erroring.
+// Internal roles only — allow-listed rather than blocking just "supplier",
+// so an account with no role assigned yet (role === null) is denied too,
+// not silently treated as internal. RLS already blocks the actual reads
+// either way; this just keeps a mistaken direct link from rendering an
+// empty, confusing page instead of redirecting.
 export default async function ScopePage() {
   const { role } = await getSessionAndRole();
-  if (role === "supplier") redirect("/");
+  if (role !== "owner_admin" && role !== "contributor") redirect("/");
 
   const scopeItems = await getScopeItems(await createClient());
 

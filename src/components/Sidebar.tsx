@@ -2,16 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { UserRole } from "@/lib/caf-data/types";
 
-const navItems = [
+const INTERNAL_NAV = [
   { href: "/", label: "Overview" },
   { href: "/scope", label: "Scope Register" },
   { href: "/evidence", label: "Evidence Library" },
   { href: "/suppliers", label: "Suppliers" },
 ];
 
-export function Sidebar() {
+const SUPPLIER_NAV = [{ href: "/", label: "Your Indicators" }];
+
+export function Sidebar({ role }: { role: UserRole | null }) {
   const pathname = usePathname();
+  const navItems =
+    role === "supplier"
+      ? SUPPLIER_NAV
+      : role === "owner_admin"
+        ? [...INTERNAL_NAV, { href: "/admin", label: "Admin" }]
+        : INTERNAL_NAV;
 
   return (
     <div className="sidebar">

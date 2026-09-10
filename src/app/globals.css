@@ -400,6 +400,23 @@ button {
   font-style: italic;
   color: var(--ink-soft);
 }
+
+/* SUPPLIER VIEW */
+.supplier-igp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.supplier-igp-card {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  padding: 20px 24px;
+}
+.supplier-igp-card h3 {
+  margin: 4px 0 14px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
 .evidence-item {
   display: flex;
   justify-content: space-between;

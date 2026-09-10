@@ -1,8 +1,16 @@
-import { scopeItems } from "@/lib/caf-data/seed";
+import { redirect } from "next/navigation";
+import { getScopeItems } from "@/lib/caf-data/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionAndRole } from "@/lib/auth";
 
-// View-only for now. Add/edit lands once this is backed by Supabase
-// (Epic 2), so it persists rather than resetting on refresh.
-export default function ScopePage() {
+// Not part of a supplier's restricted view — RLS already blocks their reads
+// here too, but redirecting keeps a mistaken direct link from just erroring.
+export default async function ScopePage() {
+  const { role } = await getSessionAndRole();
+  if (role === "supplier") redirect("/");
+
+  const scopeItems = await getScopeItems(await createClient());
+
   return (
     <>
       <h1 className="page-title">Scope register</h1>

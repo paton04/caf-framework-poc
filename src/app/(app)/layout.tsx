@@ -1,25 +1,29 @@
 import { Sidebar } from "@/components/Sidebar";
-import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
+import { getSessionAndRole } from "@/lib/auth";
 
-// TODO(Epic 7): replace the role pill below with the signed-in user's real
-// org/role once RBAC is wired up. Auth itself is real as of Epic 1.
+const ROLE_LABEL: Record<string, string> = {
+  owner_admin: "Owner/Admin",
+  contributor: "Contributor",
+  supplier: "Supplier",
+};
+
 export default async function AppShellLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, role } = await getSessionAndRole();
 
   return (
     <div className="shell">
-      <Sidebar />
+      <Sidebar role={role} />
       <div className="main">
         <div className="topbar">
           <div className="org">
             <strong>Assurance Register</strong> — CAF Self-Assessment (Trial)
           </div>
           <div className="topbar-right">
-            <div className="role-pill">{user?.email ?? "SIGNED IN"}</div>
+            <div className="role-pill">
+              {user?.email ?? "SIGNED IN"}
+              {role && ` — ${ROLE_LABEL[role]}`}
+            </div>
             <form action={signOut}>
               <button className="link-btn" type="submit">
                 Sign out

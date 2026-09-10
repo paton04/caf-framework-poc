@@ -1,6 +1,17 @@
-import { evidenceLibrary } from "@/lib/caf-data/seed";
+import { redirect } from "next/navigation";
+import { getEvidenceLibrary } from "@/lib/caf-data/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionAndRole } from "@/lib/auth";
 
-export default function EvidencePage() {
+// Review status / expiry tracking (the columns the old demo data had)
+// isn't part of the schema yet — that's Epic 3's evidence-review workflow.
+// This just lists what's actually been uploaded, for now.
+export default async function EvidencePage() {
+  const { role } = await getSessionAndRole();
+  if (role === "supplier") redirect("/");
+
+  const evidenceLibrary = await getEvidenceLibrary(await createClient());
+
   return (
     <>
       <h1 className="page-title">Evidence library</h1>
@@ -13,20 +24,14 @@ export default function EvidencePage() {
             <th>File</th>
             <th>Linked indicator</th>
             <th>Uploaded</th>
-            <th>Status</th>
-            <th>Expiry</th>
           </tr>
         </thead>
         <tbody>
           {evidenceLibrary.map((row) => (
-            <tr key={row.file}>
+            <tr key={row.id}>
               <td>{row.file}</td>
               <td className="mono">{row.linkedIgp}</td>
               <td>{row.uploaded}</td>
-              <td>
-                <span className="tag">{row.status}</span>
-              </td>
-              <td>{row.expiry}</td>
             </tr>
           ))}
         </tbody>

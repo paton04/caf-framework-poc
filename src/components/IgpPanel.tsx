@@ -1,49 +1,52 @@
 "use client";
 
-import { useRef } from "react";
-import {
-  type EvidenceFile,
-  type Igp,
-  type IgpStatus,
-  statusLabel,
-  statusOrder,
-} from "@/lib/caf-data/seed";
+import { useRef, useState } from "react";
+import { type Igp, type IgpStatus, statusLabel, statusOrder } from "@/lib/caf-data/types";
 
 interface IgpPanelProps {
   igp: Igp | null;
   open: boolean;
+  pending: boolean;
   onClose: () => void;
   onStatusChange: (status: IgpStatus) => void;
-  onNarrativeChange: (narrative: string) => void;
-  onOwnerChange: (owner: string) => void;
-  onAddEvidence: (file: EvidenceFile) => void;
+  onSaveDetails: (narrative: string, owner: string) => void;
+  onAddEvidence: (formData: FormData) => void;
 }
 
-// Status changes, narrative/owner edits and "attached" evidence here update
-// local component state only — nothing is persisted yet. That lands once
-// Supabase is wired up; this is about proving the interaction feels right.
+// Status changes persist immediately (one click, one write). Narrative and
+// owner are edited locally and only persisted on "Save changes", so typing
+// doesn't fire a write per keystroke.
 export function IgpPanel({
   igp,
   open,
+  pending,
   onClose,
   onStatusChange,
-  onNarrativeChange,
-  onOwnerChange,
+  onSaveDetails,
   onAddEvidence,
 }: IgpPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [narrative, setNarrative] = useState(igp?.narrative ?? "");
+  const [owner, setOwner] = useState(igp?.owner ?? "");
+
+  // Reset the local draft when a different IGP is opened. Adjusting state
+  // during render (rather than in an effect) is the pattern React itself
+  // recommends for this — it avoids an extra render round-trip, and the
+  // panel keeps sliding shut smoothly on close since the DOM node persists
+  // (a key-based remount would skip that transition instead).
+  const [trackedId, setTrackedId] = useState(igp?.id ?? null);
+  if (igp?.id !== trackedId) {
+    setTrackedId(igp?.id ?? null);
+    setNarrative(igp?.narrative ?? "");
+    setOwner(igp?.owner ?? "");
+  }
 
   function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    onAddEvidence({
-      name: file.name,
-      date: new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-    });
+    const formData = new FormData();
+    formData.append("file", file);
+    onAddEvidence(formData);
     e.target.value = "";
   }
 
@@ -75,6 +78,7 @@ export function IgpPanel({
                     <button
                       key={s}
                       className={`status-opt ${igp.status === s ? `sel-${s}` : ""}`}
+                      disabled={pending}
                       onClick={() => onStatusChange(s)}
                     >
                       {statusLabel[s]}
@@ -87,9 +91,9 @@ export function IgpPanel({
                 <textarea
                   className="narrative-box"
                   rows={4}
-                  value={igp.narrative}
+                  value={narrative}
                   placeholder="No narrative yet — add a summary of how this indicator is met."
-                  onChange={(e) => onNarrativeChange(e.target.value)}
+                  onChange={(e) => setNarrative(e.target.value)}
                 />
               </div>
               <div className="field">
@@ -97,14 +101,14 @@ export function IgpPanel({
                 <input
                   className="narrative-box"
                   style={{ minHeight: "auto" }}
-                  value={igp.owner}
-                  onChange={(e) => onOwnerChange(e.target.value)}
+                  value={owner}
+                  onChange={(e) => setOwner(e.target.value)}
                 />
               </div>
               <div className="field">
                 <label>Linked evidence</label>
-                {igp.evidence.map((file, i) => (
-                  <div className="evidence-item" key={`${file.name}-${i}`}>
+                {igp.evidence.map((file) => (
+                  <div className="evidence-item" key={file.id}>
                     <span className="fname">{file.name}</span>
                     <span className="fmeta">{file.date}</span>
                   </div>
@@ -112,23 +116,23 @@ export function IgpPanel({
                 <button
                   type="button"
                   className="add-evidence"
+                  disabled={pending}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   + Attach evidence
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  hidden
-                  onChange={handleFilePicked}
-                />
+                <input ref={fileInputRef} type="file" hidden onChange={handleFilePicked} />
               </div>
             </div>
             <div className="overlay-foot">
-              <button className="btn-primary" onClick={onClose}>
-                Save changes
+              <button
+                className="btn-primary"
+                disabled={pending}
+                onClick={() => onSaveDetails(narrative, owner)}
+              >
+                {pending ? "Saving…" : "Save changes"}
               </button>
-              <span className="save-hint">Saved to this session — not yet persisted</span>
+              <span className="save-hint">Saved to Supabase</span>
             </div>
           </>
         )}

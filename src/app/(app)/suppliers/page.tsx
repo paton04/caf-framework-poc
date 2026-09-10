@@ -1,45 +1,44 @@
-import { suppliers, statusLabel, type IgpStatus } from "@/lib/caf-data/seed";
+import { redirect } from "next/navigation";
+import { getSuppliers } from "@/lib/caf-data/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionAndRole } from "@/lib/auth";
 
-const statusColorVar: Record<IgpStatus, string> = {
-  achieved: "var(--achieved)",
-  partial: "var(--partial)",
-  not: "var(--not-achieved)",
-  none: "var(--not-started)",
-};
+export default async function SuppliersPage() {
+  const { role } = await getSessionAndRole();
+  if (role === "supplier") redirect("/");
 
-export default function SuppliersPage() {
+  const suppliers = await getSuppliers(await createClient());
+
   return (
     <>
       <h1 className="page-title">Suppliers</h1>
       <div className="banner">
-        Supplier accounts can only see and submit their own evidence. They
-        cannot see internal narrative, other suppliers, or unrelated
-        sections.
+        Supplier accounts can only see and submit evidence for the
+        indicators they&apos;re explicitly linked to below. They cannot see
+        internal narrative, other suppliers, or unrelated sections. Manage
+        who has the supplier role, and which indicators they&apos;re linked
+        to, from the <a href="/admin">admin page</a>.
       </div>
       <table>
         <thead>
           <tr>
             <th>Supplier</th>
-            <th>Essential function supported</th>
+            <th>Linked indicators</th>
             <th>Access</th>
-            <th>Status</th>
           </tr>
         </thead>
         <tbody>
+          {suppliers.length === 0 && (
+            <tr>
+              <td colSpan={3}>No supplier accounts yet.</td>
+            </tr>
+          )}
           {suppliers.map((s) => (
-            <tr key={s.name}>
-              <td>{s.name}</td>
-              <td>{s.essentialFunction}</td>
+            <tr key={s.userId}>
+              <td>{s.email}</td>
+              <td className="mono">{s.igpCodes.length > 0 ? s.igpCodes.join(", ") : "—"}</td>
               <td>
                 <span className="tag role-tag-sup">Supplier — own data only</span>
-              </td>
-              <td>
-                <span
-                  className="tag"
-                  style={{ color: statusColorVar[s.status], borderColor: statusColorVar[s.status] }}
-                >
-                  {statusLabel[s.status]}
-                </span>
               </td>
             </tr>
           ))}

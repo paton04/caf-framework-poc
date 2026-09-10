@@ -34,9 +34,10 @@ export function IgpPanel({
   // recommends for this — it avoids an extra render round-trip, and the
   // panel keeps sliding shut smoothly on close since the DOM node persists
   // (a key-based remount would skip that transition instead).
-  const [trackedId, setTrackedId] = useState(igp?.id ?? null);
-  if (igp?.id !== trackedId) {
-    setTrackedId(igp?.id ?? null);
+  const [trackedId, setTrackedId] = useState<string | null>(igp?.id ?? null);
+  const currentId = igp?.id ?? null;
+  if (currentId !== trackedId) {
+    setTrackedId(currentId);
     setNarrative(igp?.narrative ?? "");
     setOwner(igp?.owner ?? "");
   }

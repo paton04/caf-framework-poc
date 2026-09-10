@@ -62,6 +62,13 @@ export function IgpPanel({
             </div>
             <div className="overlay-body">
               <div className="field">
+                <label>What good looks like</label>
+                <div className="guidance-box">
+                  {igp.guidance}
+                  {igp.guidanceNote && <p className="guidance-note">{igp.guidanceNote}</p>}
+                </div>
+              </div>
+              <div className="field">
                 <label>Status</label>
                 <div className="status-select">
                   {statusOrder.map((s) => (

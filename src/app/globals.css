@@ -386,6 +386,20 @@ button {
 .narrative-box::placeholder {
   color: var(--ink-soft);
 }
+.guidance-box {
+  border-left: 3px solid var(--accent);
+  background: #f5f6f3;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.guidance-note {
+  margin: 8px 0 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--ink-soft);
+}
 .evidence-item {
   display: flex;
   justify-content: space-between;

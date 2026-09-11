@@ -101,6 +101,14 @@ export interface SupplierRow {
   igpCodes: string[];
 }
 
+export interface AuditLogEntry {
+  id: string;
+  actorEmail: string | null;
+  action: string;
+  summary: string;
+  createdAt: string; // display date + time
+}
+
 export interface ProfileWithRole {
   id: string;
   email: string;

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  AuditLogEntry,
   EvidenceFile,
   EvidenceLibraryRow,
   Igp,
@@ -15,6 +16,16 @@ function formatDate(iso: string): string {
     day: "2-digit",
     month: "short",
     year: "numeric",
+  });
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -271,4 +282,38 @@ export async function getAllIgpCodes(
     .select("code, name, sort_order")
     .order("sort_order");
   return data ?? [];
+}
+
+/**
+ * Most recent audit log entries, newest first. Owner_admin only — RLS
+ * enforces that already, this just orders/shapes what comes back. Entries
+ * are written exclusively by database triggers (see 0005_audit_log.sql);
+ * nothing in the app writes here directly.
+ */
+export async function getAuditLog(
+  supabase: SupabaseClient,
+  limit = 100
+): Promise<AuditLogEntry[]> {
+  const { data } = await supabase
+    .from("audit_log")
+    .select("id, actor_id, action, summary, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  const rows = data ?? [];
+  const actorIds = [...new Set(rows.map((r) => r.actor_id).filter((id): id is string => !!id))];
+
+  let actorEmailById = new Map<string, string>();
+  if (actorIds.length > 0) {
+    const { data: profiles } = await supabase.from("profiles").select("id, email").in("id", actorIds);
+    actorEmailById = new Map((profiles ?? []).map((p) => [p.id, p.email]));
+  }
+
+  return rows.map((row) => ({
+    id: row.id,
+    actorEmail: row.actor_id ? (actorEmailById.get(row.actor_id) ?? null) : null,
+    action: row.action,
+    summary: row.summary,
+    createdAt: formatDateTime(row.created_at),
+  }));
 }

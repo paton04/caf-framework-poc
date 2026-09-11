@@ -131,6 +131,11 @@ export function ScopeItemPanel({
 
               <div className="field">
                 <label>Essential function</label>
+                <p className="field-hint">
+                  The business-critical activity this depends on (e.g. gas
+                  flow control, access control). This is the justification
+                  for why it&apos;s in NIS scope at all.
+                </p>
                 <input
                   className="narrative-box"
                   style={{ minHeight: "auto" }}
@@ -141,6 +146,12 @@ export function ScopeItemPanel({
 
               <div className="field">
                 <label>Criticality</label>
+                <p className="field-hint">
+                  How much this specific item matters to that essential
+                  function. Tier 1 = most critical. Used to justify
+                  proportionate controls — e.g. why a Tier 3 system might
+                  not need 24/7 monitoring.
+                </p>
                 <div className="status-select">
                   {scopeCriticalities.map((c) => (
                     <button

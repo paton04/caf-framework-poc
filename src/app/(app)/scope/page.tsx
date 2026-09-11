@@ -21,6 +21,14 @@ export default async function ScopePage() {
         Systems, applications and environments in NIS scope for this cycle.
         Click a row to edit it.
       </p>
+      <div className="banner">
+        NIS regulations only apply to what supports your essential
+        function(s) — this register is where you define and justify that
+        boundary: which systems count, why, and how critical each one is.
+        It&apos;s separate from the CAF heatmap, which measures how well
+        you&apos;re doing things like access control and monitoring across
+        the organisation as a whole.
+      </div>
       <ScopeRegister items={scopeItems} />
     </>
   );

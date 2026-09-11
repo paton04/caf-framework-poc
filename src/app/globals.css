@@ -339,6 +339,11 @@ button {
   color: var(--ink-soft);
   margin-bottom: 6px;
 }
+.field-hint {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin: -3px 0 6px 0;
+}
 .status-select {
   display: flex;
   gap: 6px;

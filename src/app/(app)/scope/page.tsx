@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { ScopeRegister } from "@/components/ScopeRegister";
-import { getScopeItems } from "@/lib/caf-data/queries";
+import { getInternalUsers, getScopeItems } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 
@@ -12,7 +12,11 @@ export default async function ScopePage() {
   const { role } = await getSessionAndRole();
   if (role !== "owner_admin" && role !== "contributor") redirect("/");
 
-  const scopeItems = await getScopeItems(await createClient());
+  const supabase = await createClient();
+  const [scopeItems, internalUsers] = await Promise.all([
+    getScopeItems(supabase),
+    getInternalUsers(supabase),
+  ]);
 
   return (
     <>
@@ -29,7 +33,7 @@ export default async function ScopePage() {
         you&apos;re doing things like access control and monitoring across
         the organisation as a whole.
       </div>
-      <ScopeRegister items={scopeItems} />
+      <ScopeRegister items={scopeItems} internalUsers={internalUsers} />
     </>
   );
 }

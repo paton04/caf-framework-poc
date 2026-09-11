@@ -13,7 +13,13 @@ import type { ScopeItem } from "@/lib/caf-data/types";
 
 type Target = ScopeItem | "new" | null;
 
-export function ScopeRegister({ items }: { items: ScopeItem[] }) {
+export function ScopeRegister({
+  items,
+  internalUsers,
+}: {
+  items: ScopeItem[];
+  internalUsers: { id: string; email: string }[];
+}) {
   const router = useRouter();
   const [target, setTarget] = useState<Target>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +98,7 @@ export function ScopeRegister({ items }: { items: ScopeItem[] }) {
         target={target}
         pending={isPending}
         error={error}
+        internalUsers={internalUsers}
         onClose={() => open(null)}
         onSave={handleSave}
         onDelete={handleDelete}

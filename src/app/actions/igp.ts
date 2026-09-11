@@ -11,16 +11,22 @@ import type { IgpStatus } from "@/lib/caf-data/types";
 
 export async function updateAssessment(
   igpCode: string,
-  patch: Partial<{ status: IgpStatus; narrative: string; owner: string }>
+  patch: Partial<{ status: IgpStatus; narrative: string; owner: string; ownerId: string | null }>
 ) {
+  const { ownerId, ...rest } = patch;
   const supabase = await createClient();
   const { error } = await supabase
     .from("igp_assessments")
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update({
+      ...rest,
+      ...(ownerId !== undefined ? { owner_id: ownerId } : {}),
+      updated_at: new Date().toISOString(),
+    })
     .eq("igp_code", igpCode);
 
   if (error) throw new Error(error.message);
   revalidatePath("/");
+  revalidatePath("/my-items");
 }
 
 export async function addEvidence(igpCode: string, formData: FormData) {

@@ -56,6 +56,8 @@ export interface Igp {
   status: IgpStatus;
   narrative: string;
   owner: string;
+  ownerId: string | null;
+  ownerEmail: string | null;
   guidance: string;
   guidanceNote?: string;
   evidence: EvidenceFile[];
@@ -81,6 +83,8 @@ export interface ScopeItem {
   essentialFunction: string;
   criticality: ScopeCriticality;
   owner: string;
+  ownerId: string | null;
+  ownerEmail: string | null;
 }
 
 export interface EvidenceLibraryRow {

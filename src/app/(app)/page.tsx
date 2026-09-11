@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Heatmap } from "@/components/Heatmap";
 import { SupplierIgpList } from "@/components/SupplierIgpList";
-import { getSections, getSupplierIgps } from "@/lib/caf-data/queries";
+import { getInternalUsers, getSections, getSupplierIgps } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 
@@ -33,7 +33,11 @@ export default async function OverviewPage() {
     );
   }
 
-  const sections = await getSections(await createClient());
+  const supabase = await createClient();
+  const [sections, internalUsers] = await Promise.all([
+    getSections(supabase),
+    getInternalUsers(supabase),
+  ]);
 
   return (
     <>
@@ -42,7 +46,7 @@ export default async function OverviewPage() {
         Status across all CAF sections for the current cycle. Click any
         indicator to view or update its evidence.
       </p>
-      <Heatmap sections={sections} />
+      <Heatmap sections={sections} internalUsers={internalUsers} />
     </>
   );
 }

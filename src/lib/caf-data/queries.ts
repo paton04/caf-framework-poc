@@ -45,15 +45,15 @@ interface EvidenceRow {
 const EVIDENCE_COLUMNS =
   "id, igp_code, file_name, storage_path, uploaded_at, review_status, review_note, reviewed_by, reviewed_at, expiry_date";
 
-/** Reviewer emails for whichever evidence rows actually have one, keyed by user id. */
-async function getReviewerEmails(
+/** Emails for a set of user ids, keyed by id — skips ids that are null/absent. */
+async function getEmailsByUserId(
   supabase: SupabaseClient,
-  rows: EvidenceRow[]
+  ids: (string | null)[]
 ): Promise<Map<string, string>> {
-  const reviewerIds = [...new Set(rows.map((r) => r.reviewed_by).filter((id): id is string => !!id))];
-  if (reviewerIds.length === 0) return new Map();
+  const uniqueIds = [...new Set(ids.filter((id): id is string => !!id))];
+  if (uniqueIds.length === 0) return new Map();
 
-  const { data } = await supabase.from("profiles").select("id, email").in("id", reviewerIds);
+  const { data } = await supabase.from("profiles").select("id, email").in("id", uniqueIds);
   return new Map((data ?? []).map((p) => [p.id, p.email]));
 }
 
@@ -92,18 +92,25 @@ export async function getSections(supabase: SupabaseClient): Promise<Section[]> 
       .from("caf_igps")
       .select("code, section_code, name, sort_order, guidance, guidance_note")
       .order("sort_order"),
-    supabase.from("igp_assessments").select("igp_code, status, narrative, owner"),
+    supabase.from("igp_assessments").select("igp_code, status, narrative, owner, owner_id"),
     supabase
       .from("evidence_files")
       .select(EVIDENCE_COLUMNS)
       .order("uploaded_at", { ascending: false }),
   ]);
 
-  const assessmentByIgp = new Map(
-    (assessmentsRes.data ?? []).map((a) => [a.igp_code, a])
+  const assessments = assessmentsRes.data ?? [];
+  const assessmentByIgp = new Map(assessments.map((a) => [a.igp_code, a]));
+  const ownerEmailById = await getEmailsByUserId(
+    supabase,
+    assessments.map((a) => a.owner_id)
   );
+
   const evidenceRows = (evidenceRes.data ?? []) as EvidenceRow[];
-  const reviewerEmailById = await getReviewerEmails(supabase, evidenceRows);
+  const reviewerEmailById = await getEmailsByUserId(
+    supabase,
+    evidenceRows.map((r) => r.reviewed_by)
+  );
   const evidenceByIgp = new Map<string, EvidenceFile[]>();
   for (const row of evidenceRows) {
     const list = evidenceByIgp.get(row.igp_code) ?? [];
@@ -124,6 +131,8 @@ export async function getSections(supabase: SupabaseClient): Promise<Section[]> 
           status: assessment?.status ?? "none",
           narrative: assessment?.narrative ?? "",
           owner: assessment?.owner ?? "Unassigned",
+          ownerId: assessment?.owner_id ?? null,
+          ownerEmail: assessment?.owner_id ? (ownerEmailById.get(assessment.owner_id) ?? null) : null,
           guidance: igp.guidance,
           guidanceNote: igp.guidance_note ?? undefined,
           evidence: evidenceByIgp.get(igp.code) ?? [],
@@ -162,7 +171,10 @@ export async function getSupplierIgps(
   // covers internal roles reading everyone, or a user reading their own),
   // so this comes back empty for them — reviewedByEmail ends up null,
   // which is fine, they still get review_status/review_note either way.
-  const reviewerEmailById = await getReviewerEmails(supabase, evidenceRows);
+  const reviewerEmailById = await getEmailsByUserId(
+    supabase,
+    evidenceRows.map((r) => r.reviewed_by)
+  );
   const evidenceByIgp = new Map<string, EvidenceFile[]>();
   for (const row of evidenceRows) {
     const list = evidenceByIgp.get(row.igp_code) ?? [];
@@ -178,6 +190,8 @@ export async function getSupplierIgps(
     status: "none",
     narrative: "",
     owner: "",
+    ownerId: null,
+    ownerEmail: null,
     guidance: igp.guidance,
     guidanceNote: igp.guidance_note ?? undefined,
     evidence: evidenceByIgp.get(igp.code) ?? [],
@@ -187,10 +201,16 @@ export async function getSupplierIgps(
 export async function getScopeItems(supabase: SupabaseClient): Promise<ScopeItem[]> {
   const { data } = await supabase
     .from("scope_items")
-    .select("id, name, type, description, essential_function, criticality, owner")
+    .select("id, name, type, description, essential_function, criticality, owner, owner_id")
     .order("created_at");
 
-  return (data ?? []).map((row) => ({
+  const rows = data ?? [];
+  const ownerEmailById = await getEmailsByUserId(
+    supabase,
+    rows.map((r) => r.owner_id)
+  );
+
+  return rows.map((row) => ({
     id: row.id,
     name: row.name,
     type: row.type,
@@ -198,6 +218,8 @@ export async function getScopeItems(supabase: SupabaseClient): Promise<ScopeItem
     essentialFunction: row.essential_function,
     criticality: row.criticality,
     owner: row.owner,
+    ownerId: row.owner_id,
+    ownerEmail: row.owner_id ? (ownerEmailById.get(row.owner_id) ?? null) : null,
   }));
 }
 
@@ -210,7 +232,10 @@ export async function getEvidenceLibrary(
     .order("uploaded_at", { ascending: false });
 
   const rows = (data ?? []) as EvidenceRow[];
-  const reviewerEmailById = await getReviewerEmails(supabase, rows);
+  const reviewerEmailById = await getEmailsByUserId(
+    supabase,
+    rows.map((r) => r.reviewed_by)
+  );
 
   return rows.map((row) => {
     const evidence = mapEvidenceRow(row, reviewerEmailById);
@@ -274,6 +299,49 @@ export async function getProfilesWithRoles(
   }));
 }
 
+/** Owner_admin/contributor accounts, for the "link to a registered user" owner dropdown. */
+export async function getInternalUsers(
+  supabase: SupabaseClient
+): Promise<{ id: string; email: string }[]> {
+  const profiles = await getProfilesWithRoles(supabase);
+  return profiles
+    .filter((p) => p.role === "owner_admin" || p.role === "contributor")
+    .map((p) => ({ id: p.id, email: p.email }));
+}
+
+/**
+ * IGPs and scope items owned by a specific registered user — the "My
+ * items" routing view. Unlinked (free-text-only) owners never show up
+ * here, by design; that's what makes linking worthwhile.
+ */
+export async function getMyItems(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<{ igps: { code: string; name: string; sectionCode: string; status: string }[]; scopeItems: ScopeItem[] }> {
+  const [assessmentsRes, scopeRes] = await Promise.all([
+    supabase
+      .from("igp_assessments")
+      .select("igp_code, status, caf_igps!inner(name, section_code)")
+      .eq("owner_id", userId),
+    getScopeItems(supabase),
+  ]);
+
+  const igps = (assessmentsRes.data ?? []).map((row) => {
+    const igp = Array.isArray(row.caf_igps) ? row.caf_igps[0] : row.caf_igps;
+    return {
+      code: row.igp_code,
+      name: igp?.name ?? row.igp_code,
+      sectionCode: igp?.section_code ?? "",
+      status: row.status,
+    };
+  });
+
+  return {
+    igps,
+    scopeItems: scopeRes.filter((s) => s.ownerId === userId),
+  };
+}
+
 export async function getAllIgpCodes(
   supabase: SupabaseClient
 ): Promise<{ code: string; name: string }[]> {
@@ -301,13 +369,10 @@ export async function getAuditLog(
     .limit(limit);
 
   const rows = data ?? [];
-  const actorIds = [...new Set(rows.map((r) => r.actor_id).filter((id): id is string => !!id))];
-
-  let actorEmailById = new Map<string, string>();
-  if (actorIds.length > 0) {
-    const { data: profiles } = await supabase.from("profiles").select("id, email").in("id", actorIds);
-    actorEmailById = new Map((profiles ?? []).map((p) => [p.id, p.email]));
-  }
+  const actorEmailById = await getEmailsByUserId(
+    supabase,
+    rows.map((r) => r.actor_id)
+  );
 
   return rows.map((row) => ({
     id: row.id,

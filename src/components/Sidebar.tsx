@@ -9,6 +9,7 @@ const INTERNAL_NAV = [
   { href: "/scope", label: "Scope Register" },
   { href: "/evidence", label: "Evidence Library" },
   { href: "/suppliers", label: "Suppliers" },
+  { href: "/my-items", label: "My Items" },
 ];
 
 const SUPPLIER_NAV = [{ href: "/", label: "Your Indicators" }];

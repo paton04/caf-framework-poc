@@ -14,6 +14,7 @@ export interface ScopeItemInput {
   essentialFunction: string;
   criticality: ScopeCriticality;
   owner: string;
+  ownerId: string | null;
 }
 
 function friendlyError(message: string): string {
@@ -34,10 +35,12 @@ export async function createScopeItem(input: ScopeItemInput) {
     essential_function: input.essentialFunction,
     criticality: input.criticality,
     owner: input.owner,
+    owner_id: input.ownerId,
   });
 
   if (error) throw new Error(friendlyError(error.message));
   revalidatePath("/scope");
+  revalidatePath("/my-items");
 }
 
 export async function updateScopeItem(id: string, input: ScopeItemInput) {
@@ -51,11 +54,13 @@ export async function updateScopeItem(id: string, input: ScopeItemInput) {
       essential_function: input.essentialFunction,
       criticality: input.criticality,
       owner: input.owner,
+      owner_id: input.ownerId,
     })
     .eq("id", id);
 
   if (error) throw new Error(friendlyError(error.message));
   revalidatePath("/scope");
+  revalidatePath("/my-items");
 }
 
 export async function deleteScopeItem(id: string) {
@@ -64,4 +69,5 @@ export async function deleteScopeItem(id: string) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/scope");
+  revalidatePath("/my-items");
 }

@@ -16,6 +16,7 @@ interface ScopeItemPanelProps {
   target: Target;
   pending: boolean;
   error: string | null;
+  internalUsers: { id: string; email: string }[];
   onClose: () => void;
   onSave: (input: ScopeItemInput) => void;
   onDelete: () => void;
@@ -28,6 +29,7 @@ const BLANK: ScopeItemInput = {
   essentialFunction: "",
   criticality: "Tier 3",
   owner: "",
+  ownerId: null,
 };
 
 function toInput(item: ScopeItem): ScopeItemInput {
@@ -38,6 +40,7 @@ function toInput(item: ScopeItem): ScopeItemInput {
     essentialFunction: item.essentialFunction,
     criticality: item.criticality,
     owner: item.owner,
+    ownerId: item.ownerId,
   };
 }
 
@@ -45,6 +48,7 @@ export function ScopeItemPanel({
   target,
   pending,
   error,
+  internalUsers,
   onClose,
   onSave,
   onDelete,
@@ -174,6 +178,26 @@ export function ScopeItemPanel({
                   value={draft.owner}
                   onChange={(e) => update("owner", e.target.value)}
                 />
+              </div>
+
+              <div className="field">
+                <label>Link to a registered account</label>
+                <p className="field-hint">
+                  Optional. Linking routes this item to that person&apos;s
+                  &quot;My items&quot; view — a free-text owner above still
+                  works without one.
+                </p>
+                <select
+                  value={draft.ownerId ?? ""}
+                  onChange={(e) => update("ownerId", e.target.value || null)}
+                >
+                  <option value="">— not linked —</option>
+                  {internalUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.email}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="overlay-foot">

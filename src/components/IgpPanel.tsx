@@ -14,9 +14,10 @@ interface IgpPanelProps {
   igp: Igp | null;
   open: boolean;
   pending: boolean;
+  internalUsers: { id: string; email: string }[];
   onClose: () => void;
   onStatusChange: (status: IgpStatus) => void;
-  onSaveDetails: (narrative: string, owner: string) => void;
+  onSaveDetails: (narrative: string, owner: string, ownerId: string | null) => void;
   onAddEvidence: (formData: FormData) => void;
 }
 
@@ -27,6 +28,7 @@ export function IgpPanel({
   igp,
   open,
   pending,
+  internalUsers,
   onClose,
   onStatusChange,
   onSaveDetails,
@@ -35,6 +37,7 @@ export function IgpPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [narrative, setNarrative] = useState(igp?.narrative ?? "");
   const [owner, setOwner] = useState(igp?.owner ?? "");
+  const [ownerId, setOwnerId] = useState<string | null>(igp?.ownerId ?? null);
 
   // Reset the local draft when a different IGP is opened. Adjusting state
   // during render (rather than in an effect) is the pattern React itself
@@ -47,6 +50,7 @@ export function IgpPanel({
     setTrackedId(currentId);
     setNarrative(igp?.narrative ?? "");
     setOwner(igp?.owner ?? "");
+    setOwnerId(igp?.ownerId ?? null);
   }
 
   function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
@@ -114,6 +118,22 @@ export function IgpPanel({
                 />
               </div>
               <div className="field">
+                <label>Link to a registered account</label>
+                <p className="field-hint">
+                  Optional. Linking routes this indicator to that
+                  person&apos;s &quot;My items&quot; view — a free-text
+                  owner above still works without one.
+                </p>
+                <select value={ownerId ?? ""} onChange={(e) => setOwnerId(e.target.value || null)}>
+                  <option value="">— not linked —</option>
+                  {internalUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
                 <label>Linked evidence</label>
                 <p className="field-hint">
                   Review and approve/reject evidence from the Evidence
@@ -143,7 +163,7 @@ export function IgpPanel({
               <button
                 className="btn-primary"
                 disabled={pending}
-                onClick={() => onSaveDetails(narrative, owner)}
+                onClick={() => onSaveDetails(narrative, owner, ownerId)}
               >
                 {pending ? "Saving…" : "Save changes"}
               </button>

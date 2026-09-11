@@ -15,7 +15,18 @@ interface Selection {
 // of truth — mutations go straight to Supabase via Server Actions, then
 // router.refresh() re-fetches rather than the component tracking its own
 // copy of the data.
-export function Heatmap({ sections }: { sections: Section[] }) {
+interface InternalUser {
+  id: string;
+  email: string;
+}
+
+export function Heatmap({
+  sections,
+  internalUsers,
+}: {
+  sections: Section[];
+  internalUsers: InternalUser[];
+}) {
   const router = useRouter();
   const [selection, setSelection] = useState<Selection | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -34,10 +45,10 @@ export function Heatmap({ sections }: { sections: Section[] }) {
     });
   }
 
-  function handleSaveDetails(narrative: string, owner: string) {
+  function handleSaveDetails(narrative: string, owner: string, ownerId: string | null) {
     if (!selection) return;
     startTransition(async () => {
-      await updateAssessment(selection.igpId, { narrative, owner });
+      await updateAssessment(selection.igpId, { narrative, owner, ownerId });
       router.refresh();
     });
   }
@@ -99,6 +110,7 @@ export function Heatmap({ sections }: { sections: Section[] }) {
         igp={selectedIgp}
         open={selectedIgp !== null}
         pending={isPending}
+        internalUsers={internalUsers}
         onClose={() => setSelection(null)}
         onStatusChange={handleStatusChange}
         onSaveDetails={handleSaveDetails}

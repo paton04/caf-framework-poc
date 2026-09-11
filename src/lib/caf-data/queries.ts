@@ -136,10 +136,11 @@ export async function getSupplierIgps(
 export async function getScopeItems(supabase: SupabaseClient): Promise<ScopeItem[]> {
   const { data } = await supabase
     .from("scope_items")
-    .select("name, type, description, essential_function, criticality, owner")
+    .select("id, name, type, description, essential_function, criticality, owner")
     .order("created_at");
 
   return (data ?? []).map((row) => ({
+    id: row.id,
     name: row.name,
     type: row.type,
     description: row.description,

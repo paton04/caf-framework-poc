@@ -47,13 +47,18 @@ export interface Section {
 }
 
 export type ScopeItemType = "Environment" | "Application" | "Other";
+export type ScopeCriticality = "Tier 1" | "Tier 2" | "Tier 3";
+
+export const scopeItemTypes: ScopeItemType[] = ["Environment", "Application", "Other"];
+export const scopeCriticalities: ScopeCriticality[] = ["Tier 1", "Tier 2", "Tier 3"];
 
 export interface ScopeItem {
+  id: string;
   name: string;
   type: ScopeItemType;
   description: string;
   essentialFunction: string;
-  criticality: "Tier 1" | "Tier 2" | "Tier 3";
+  criticality: ScopeCriticality;
   owner: string;
 }
 

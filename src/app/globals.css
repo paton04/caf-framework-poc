@@ -372,6 +372,11 @@ button {
   color: var(--not-started);
   border-color: var(--not-started);
 }
+.status-opt.sel-neutral {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
 .narrative-box {
   border: 1px solid var(--rule);
   padding: 10px 12px;

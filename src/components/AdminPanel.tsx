@@ -19,20 +19,30 @@ interface AdminPanelProps {
 
 // Role changes and supplier-access assignments both go straight to
 // Supabase — RLS restricts who can actually write these tables to
-// owner_admin, this is just the interface for it.
+// owner_admin, this is just the interface for it. The role select reads
+// straight from the `profiles` prop rather than mirroring it into local
+// state, so a failed change (e.g. demoting the last Owner/Admin, blocked
+// by a DB trigger) just leaves it showing the real, unchanged value
+// instead of needing a manual revert.
 export function AdminPanel({ profiles, igps, supplierAccess }: AdminPanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [roles, setRoles] = useState<Record<string, UserRole | null>>(
-    Object.fromEntries(profiles.map((p) => [p.id, p.role]))
-  );
+  const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [access, setAccess] = useState<Record<string, string[]>>(supplierAccess);
 
   function handleRoleChange(userId: string, role: UserRole) {
-    setRoles((prev) => ({ ...prev, [userId]: role }));
+    setError(null);
+    setSavingUserId(userId);
     startTransition(async () => {
-      await setUserRole(userId, role);
-      router.refresh();
+      try {
+        await setUserRole(userId, role);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong.");
+      } finally {
+        setSavingUserId(null);
+      }
     });
   }
 
@@ -47,77 +57,85 @@ export function AdminPanel({ profiles, igps, supplierAccess }: AdminPanelProps) 
   }
 
   function handleSaveAccess(userId: string) {
+    setError(null);
     startTransition(async () => {
-      await setSupplierAccess(userId, access[userId] ?? []);
-      router.refresh();
+      try {
+        await setSupplierAccess(userId, access[userId] ?? []);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong.");
+      }
     });
   }
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Role</th>
-        </tr>
-      </thead>
-      <tbody>
-        {profiles.map((p) => (
-          <Fragment key={p.id}>
-            <tr>
-              <td>{p.email}</td>
-              <td>
-                <select
-                  value={roles[p.id] ?? ""}
-                  disabled={isPending}
-                  onChange={(e) => handleRoleChange(p.id, e.target.value as UserRole)}
-                >
-                  <option value="" disabled>
-                    — none —
-                  </option>
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              </td>
-            </tr>
-            {roles[p.id] === "supplier" && (
+    <>
+      {error && <div className="banner auth-error">{error}</div>}
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          {profiles.map((p) => (
+            <Fragment key={p.id}>
               <tr>
-                <td colSpan={2}>
-                  <div className="field">
-                    <label>Indicators {p.email} can access</label>
-                    <div className="status-select">
-                      {igps.map((igp) => (
-                        <button
-                          type="button"
-                          key={igp.code}
-                          className={`status-opt ${
-                            (access[p.id] ?? []).includes(igp.code) ? "sel-achieved" : ""
-                          }`}
-                          onClick={() => toggleIgp(p.id, igp.code)}
-                        >
-                          {igp.code}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      style={{ marginTop: 10 }}
-                      disabled={isPending}
-                      onClick={() => handleSaveAccess(p.id)}
-                    >
-                      Save access
-                    </button>
-                  </div>
+                <td>{p.email}</td>
+                <td>
+                  <select
+                    value={p.role ?? ""}
+                    disabled={savingUserId === p.id}
+                    onChange={(e) => handleRoleChange(p.id, e.target.value as UserRole)}
+                  >
+                    <option value="" disabled>
+                      — none —
+                    </option>
+                    {ROLE_OPTIONS.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
                 </td>
               </tr>
-            )}
-          </Fragment>
-        ))}
-      </tbody>
-    </table>
+              {p.role === "supplier" && (
+                <tr>
+                  <td colSpan={2}>
+                    <div className="field">
+                      <label>Indicators {p.email} can access</label>
+                      <div className="status-select">
+                        {igps.map((igp) => (
+                          <button
+                            type="button"
+                            key={igp.code}
+                            className={`status-opt ${
+                              (access[p.id] ?? []).includes(igp.code) ? "sel-achieved" : ""
+                            }`}
+                            onClick={() => toggleIgp(p.id, igp.code)}
+                          >
+                            {igp.code}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        style={{ marginTop: 10 }}
+                        disabled={isPending}
+                        onClick={() => handleSaveAccess(p.id)}
+                      >
+                        Save access
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }

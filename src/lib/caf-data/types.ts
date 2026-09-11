@@ -22,11 +22,32 @@ export const statusClass: Record<IgpStatus, string> = {
 
 export const statusOrder: IgpStatus[] = ["none", "partial", "achieved", "not"];
 
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
+export const reviewStatusLabel: Record<ReviewStatus, string> = {
+  pending: "Pending review",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+// Reuses the IGP status colour classes — same visual language (green/
+// grey/red), different label set, no need for a parallel set of classes.
+export const reviewStatusClass: Record<ReviewStatus, string> = {
+  pending: "st-none",
+  approved: "st-achieved",
+  rejected: "st-not",
+};
+
 export interface EvidenceFile {
   id: string;
   name: string;
   date: string; // display string, e.g. "14 Jan 2026"
   storagePath: string;
+  reviewStatus: ReviewStatus;
+  reviewNote: string | null;
+  reviewedByEmail: string | null;
+  reviewedAt: string | null; // display string
+  expiryDate: string | null; // display string
 }
 
 export interface Igp {
@@ -67,6 +88,11 @@ export interface EvidenceLibraryRow {
   file: string;
   linkedIgp: string;
   uploaded: string;
+  reviewStatus: ReviewStatus;
+  reviewNote: string | null;
+  reviewedByEmail: string | null;
+  reviewedAt: string | null;
+  expiryDate: string | null;
 }
 
 export interface SupplierRow {

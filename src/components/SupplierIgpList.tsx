@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addEvidence } from "@/app/actions/igp";
-import type { Igp } from "@/lib/caf-data/types";
+import { reviewStatusClass, reviewStatusLabel, type Igp } from "@/lib/caf-data/types";
 
 // Supplier's own view: only the IGPs they're linked to, guidance to work
 // against, and their own evidence — no status, narrative or owner fields.
@@ -47,9 +47,19 @@ export function SupplierIgpList({ igps }: { igps: Igp[] }) {
           <div className="field">
             <label>Your evidence</label>
             {igp.evidence.map((file) => (
-              <div className="evidence-item" key={file.id}>
-                <span className="fname">{file.name}</span>
-                <span className="fmeta">{file.date}</span>
+              <div key={file.id}>
+                <div className="evidence-item">
+                  <span className="fname">{file.name}</span>
+                  <span className={`status ${reviewStatusClass[file.reviewStatus]}`} style={{ marginTop: 0 }}>
+                    {reviewStatusLabel[file.reviewStatus]}
+                  </span>
+                  <span className="fmeta">{file.date}</span>
+                </div>
+                {file.reviewStatus === "rejected" && file.reviewNote && (
+                  <p className="guidance-note" style={{ marginTop: -4 }}>
+                    Reviewer note: {file.reviewNote}
+                  </p>
+                )}
               </div>
             ))}
             <label className="add-evidence" style={{ display: "block", cursor: "pointer" }}>

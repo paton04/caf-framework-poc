@@ -1,7 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { type Igp, type IgpStatus, statusLabel, statusOrder } from "@/lib/caf-data/types";
+import {
+  type Igp,
+  type IgpStatus,
+  reviewStatusClass,
+  reviewStatusLabel,
+  statusLabel,
+  statusOrder,
+} from "@/lib/caf-data/types";
 
 interface IgpPanelProps {
   igp: Igp | null;
@@ -108,9 +115,16 @@ export function IgpPanel({
               </div>
               <div className="field">
                 <label>Linked evidence</label>
+                <p className="field-hint">
+                  Review and approve/reject evidence from the Evidence
+                  Library — Owner/Admin only.
+                </p>
                 {igp.evidence.map((file) => (
                   <div className="evidence-item" key={file.id}>
                     <span className="fname">{file.name}</span>
+                    <span className={`status ${reviewStatusClass[file.reviewStatus]}`} style={{ marginTop: 0 }}>
+                      {reviewStatusLabel[file.reviewStatus]}
+                    </span>
                     <span className="fmeta">{file.date}</span>
                   </div>
                 ))}

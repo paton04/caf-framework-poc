@@ -18,6 +18,48 @@ function formatDate(iso: string): string {
   });
 }
 
+interface EvidenceRow {
+  id: string;
+  igp_code: string;
+  file_name: string;
+  storage_path: string;
+  uploaded_at: string;
+  review_status: "pending" | "approved" | "rejected";
+  review_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  expiry_date: string | null;
+}
+
+const EVIDENCE_COLUMNS =
+  "id, igp_code, file_name, storage_path, uploaded_at, review_status, review_note, reviewed_by, reviewed_at, expiry_date";
+
+/** Reviewer emails for whichever evidence rows actually have one, keyed by user id. */
+async function getReviewerEmails(
+  supabase: SupabaseClient,
+  rows: EvidenceRow[]
+): Promise<Map<string, string>> {
+  const reviewerIds = [...new Set(rows.map((r) => r.reviewed_by).filter((id): id is string => !!id))];
+  if (reviewerIds.length === 0) return new Map();
+
+  const { data } = await supabase.from("profiles").select("id, email").in("id", reviewerIds);
+  return new Map((data ?? []).map((p) => [p.id, p.email]));
+}
+
+function mapEvidenceRow(row: EvidenceRow, reviewerEmailById: Map<string, string>): EvidenceFile {
+  return {
+    id: row.id,
+    name: row.file_name,
+    date: formatDate(row.uploaded_at),
+    storagePath: row.storage_path,
+    reviewStatus: row.review_status,
+    reviewNote: row.review_note,
+    reviewedByEmail: row.reviewed_by ? (reviewerEmailById.get(row.reviewed_by) ?? null) : null,
+    reviewedAt: row.reviewed_at ? formatDate(row.reviewed_at) : null,
+    expiryDate: row.expiry_date,
+  };
+}
+
 /** The current user's role, or null if they don't have one assigned yet. */
 export async function getCurrentUserRole(
   supabase: SupabaseClient,
@@ -42,22 +84,19 @@ export async function getSections(supabase: SupabaseClient): Promise<Section[]> 
     supabase.from("igp_assessments").select("igp_code, status, narrative, owner"),
     supabase
       .from("evidence_files")
-      .select("id, igp_code, file_name, storage_path, uploaded_at")
+      .select(EVIDENCE_COLUMNS)
       .order("uploaded_at", { ascending: false }),
   ]);
 
   const assessmentByIgp = new Map(
     (assessmentsRes.data ?? []).map((a) => [a.igp_code, a])
   );
+  const evidenceRows = (evidenceRes.data ?? []) as EvidenceRow[];
+  const reviewerEmailById = await getReviewerEmails(supabase, evidenceRows);
   const evidenceByIgp = new Map<string, EvidenceFile[]>();
-  for (const row of evidenceRes.data ?? []) {
+  for (const row of evidenceRows) {
     const list = evidenceByIgp.get(row.igp_code) ?? [];
-    list.push({
-      id: row.id,
-      name: row.file_name,
-      date: formatDate(row.uploaded_at),
-      storagePath: row.storage_path,
-    });
+    list.push(mapEvidenceRow(row, reviewerEmailById));
     evidenceByIgp.set(row.igp_code, list);
   }
 
@@ -102,20 +141,21 @@ export async function getSupplierIgps(
       .order("sort_order"),
     supabase
       .from("evidence_files")
-      .select("id, igp_code, file_name, storage_path, uploaded_at")
+      .select(EVIDENCE_COLUMNS)
       .in("igp_code", igpCodes)
       .order("uploaded_at", { ascending: false }),
   ]);
 
+  const evidenceRows = (evidenceRes.data ?? []) as EvidenceRow[];
+  // Suppliers can't read the reviewer's profile row (profiles RLS only
+  // covers internal roles reading everyone, or a user reading their own),
+  // so this comes back empty for them — reviewedByEmail ends up null,
+  // which is fine, they still get review_status/review_note either way.
+  const reviewerEmailById = await getReviewerEmails(supabase, evidenceRows);
   const evidenceByIgp = new Map<string, EvidenceFile[]>();
-  for (const row of evidenceRes.data ?? []) {
+  for (const row of evidenceRows) {
     const list = evidenceByIgp.get(row.igp_code) ?? [];
-    list.push({
-      id: row.id,
-      name: row.file_name,
-      date: formatDate(row.uploaded_at),
-      storagePath: row.storage_path,
-    });
+    list.push(mapEvidenceRow(row, reviewerEmailById));
     evidenceByIgp.set(row.igp_code, list);
   }
 
@@ -155,15 +195,26 @@ export async function getEvidenceLibrary(
 ): Promise<EvidenceLibraryRow[]> {
   const { data } = await supabase
     .from("evidence_files")
-    .select("id, file_name, igp_code, uploaded_at")
+    .select(EVIDENCE_COLUMNS)
     .order("uploaded_at", { ascending: false });
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    file: row.file_name,
-    linkedIgp: row.igp_code,
-    uploaded: formatDate(row.uploaded_at),
-  }));
+  const rows = (data ?? []) as EvidenceRow[];
+  const reviewerEmailById = await getReviewerEmails(supabase, rows);
+
+  return rows.map((row) => {
+    const evidence = mapEvidenceRow(row, reviewerEmailById);
+    return {
+      id: evidence.id,
+      file: evidence.name,
+      linkedIgp: row.igp_code,
+      uploaded: evidence.date,
+      reviewStatus: evidence.reviewStatus,
+      reviewNote: evidence.reviewNote,
+      reviewedByEmail: evidence.reviewedByEmail,
+      reviewedAt: evidence.reviewedAt,
+      expiryDate: evidence.expiryDate,
+    };
+  });
 }
 
 /** Every user with the supplier role, and which IGPs they're linked to. */

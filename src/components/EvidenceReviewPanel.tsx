@@ -65,6 +65,15 @@ export function EvidenceReviewPanel({
                 </span>
               </div>
 
+              {row.uploadedByEmail && (
+                <div className="field">
+                  <label>Uploaded by</label>
+                  <div className="fmeta">
+                    {row.uploadedByEmail} — {row.uploaded}
+                  </div>
+                </div>
+              )}
+
               {row.reviewNote && (
                 <div className="field">
                   <label>Review note</label>

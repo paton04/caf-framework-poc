@@ -35,6 +35,7 @@ interface EvidenceRow {
   file_name: string;
   storage_path: string;
   uploaded_at: string;
+  uploaded_by: string | null;
   review_status: "pending" | "approved" | "rejected";
   review_note: string | null;
   reviewed_by: string | null;
@@ -43,7 +44,7 @@ interface EvidenceRow {
 }
 
 const EVIDENCE_COLUMNS =
-  "id, igp_code, file_name, storage_path, uploaded_at, review_status, review_note, reviewed_by, reviewed_at, expiry_date";
+  "id, igp_code, file_name, storage_path, uploaded_at, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, expiry_date";
 
 /** Emails for a set of user ids, keyed by id — skips ids that are null/absent. */
 async function getEmailsByUserId(
@@ -57,18 +58,23 @@ async function getEmailsByUserId(
   return new Map((data ?? []).map((p) => [p.id, p.email]));
 }
 
-function mapEvidenceRow(row: EvidenceRow, reviewerEmailById: Map<string, string>): EvidenceFile {
+function mapEvidenceRow(row: EvidenceRow, emailById: Map<string, string>): EvidenceFile {
   return {
     id: row.id,
     name: row.file_name,
     date: formatDate(row.uploaded_at),
     storagePath: row.storage_path,
+    uploadedByEmail: row.uploaded_by ? (emailById.get(row.uploaded_by) ?? null) : null,
     reviewStatus: row.review_status,
     reviewNote: row.review_note,
-    reviewedByEmail: row.reviewed_by ? (reviewerEmailById.get(row.reviewed_by) ?? null) : null,
+    reviewedByEmail: row.reviewed_by ? (emailById.get(row.reviewed_by) ?? null) : null,
     reviewedAt: row.reviewed_at ? formatDate(row.reviewed_at) : null,
     expiryDate: row.expiry_date,
   };
+}
+
+function evidenceEmailIds(rows: EvidenceRow[]): string[] {
+  return rows.flatMap((r) => [r.reviewed_by, r.uploaded_by]).filter((id): id is string => !!id);
 }
 
 /** The current user's role, or null if they don't have one assigned yet. */
@@ -107,14 +113,11 @@ export async function getSections(supabase: SupabaseClient): Promise<Section[]> 
   );
 
   const evidenceRows = (evidenceRes.data ?? []) as EvidenceRow[];
-  const reviewerEmailById = await getEmailsByUserId(
-    supabase,
-    evidenceRows.map((r) => r.reviewed_by)
-  );
+  const evidenceEmailById = await getEmailsByUserId(supabase, evidenceEmailIds(evidenceRows));
   const evidenceByIgp = new Map<string, EvidenceFile[]>();
   for (const row of evidenceRows) {
     const list = evidenceByIgp.get(row.igp_code) ?? [];
-    list.push(mapEvidenceRow(row, reviewerEmailById));
+    list.push(mapEvidenceRow(row, evidenceEmailById));
     evidenceByIgp.set(row.igp_code, list);
   }
 
@@ -167,18 +170,15 @@ export async function getSupplierIgps(
   ]);
 
   const evidenceRows = (evidenceRes.data ?? []) as EvidenceRow[];
-  // Suppliers can't read the reviewer's profile row (profiles RLS only
-  // covers internal roles reading everyone, or a user reading their own),
-  // so this comes back empty for them — reviewedByEmail ends up null,
-  // which is fine, they still get review_status/review_note either way.
-  const reviewerEmailById = await getEmailsByUserId(
-    supabase,
-    evidenceRows.map((r) => r.reviewed_by)
-  );
+  // Suppliers can't read a reviewer's or uploader's profile row (profiles
+  // RLS only covers internal roles reading everyone, or a user reading
+  // their own), so those resolve to null for anyone but themselves —
+  // fine, they still get review_status/review_note either way.
+  const evidenceEmailById = await getEmailsByUserId(supabase, evidenceEmailIds(evidenceRows));
   const evidenceByIgp = new Map<string, EvidenceFile[]>();
   for (const row of evidenceRows) {
     const list = evidenceByIgp.get(row.igp_code) ?? [];
-    list.push(mapEvidenceRow(row, reviewerEmailById));
+    list.push(mapEvidenceRow(row, evidenceEmailById));
     evidenceByIgp.set(row.igp_code, list);
   }
 
@@ -232,18 +232,16 @@ export async function getEvidenceLibrary(
     .order("uploaded_at", { ascending: false });
 
   const rows = (data ?? []) as EvidenceRow[];
-  const reviewerEmailById = await getEmailsByUserId(
-    supabase,
-    rows.map((r) => r.reviewed_by)
-  );
+  const evidenceEmailById = await getEmailsByUserId(supabase, evidenceEmailIds(rows));
 
   return rows.map((row) => {
-    const evidence = mapEvidenceRow(row, reviewerEmailById);
+    const evidence = mapEvidenceRow(row, evidenceEmailById);
     return {
       id: evidence.id,
       file: evidence.name,
       linkedIgp: row.igp_code,
       uploaded: evidence.date,
+      uploadedByEmail: evidence.uploadedByEmail,
       reviewStatus: evidence.reviewStatus,
       reviewNote: evidence.reviewNote,
       reviewedByEmail: evidence.reviewedByEmail,

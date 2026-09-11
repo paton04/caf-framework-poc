@@ -43,6 +43,7 @@ export interface EvidenceFile {
   name: string;
   date: string; // display string, e.g. "14 Jan 2026"
   storagePath: string;
+  uploadedByEmail: string | null;
   reviewStatus: ReviewStatus;
   reviewNote: string | null;
   reviewedByEmail: string | null;
@@ -92,6 +93,7 @@ export interface EvidenceLibraryRow {
   file: string;
   linkedIgp: string;
   uploaded: string;
+  uploadedByEmail: string | null;
   reviewStatus: ReviewStatus;
   reviewNote: string | null;
   reviewedByEmail: string | null;

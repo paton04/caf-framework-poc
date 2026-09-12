@@ -7,6 +7,9 @@ import type {
   ProfileWithRole,
   ScopeItem,
   Section,
+  SnapshotData,
+  SnapshotDetail,
+  SnapshotSummary,
   SupplierRow,
   UserRole,
 } from "./types";
@@ -379,4 +382,48 @@ export async function getAuditLog(
     summary: row.summary,
     createdAt: formatDateTime(row.created_at),
   }));
+}
+
+/** Snapshot list for the history page — deliberately excludes the `data` blob. */
+export async function getSnapshots(supabase: SupabaseClient): Promise<SnapshotSummary[]> {
+  const { data } = await supabase
+    .from("cycle_snapshots")
+    .select("id, label, frozen_at, frozen_by")
+    .order("frozen_at", { ascending: false });
+
+  const rows = data ?? [];
+  const emailById = await getEmailsByUserId(
+    supabase,
+    rows.map((r) => r.frozen_by)
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    label: row.label,
+    frozenAt: formatDateTime(row.frozen_at),
+    frozenByEmail: row.frozen_by ? (emailById.get(row.frozen_by) ?? null) : null,
+  }));
+}
+
+export async function getSnapshotDetail(
+  supabase: SupabaseClient,
+  id: string
+): Promise<SnapshotDetail | null> {
+  const { data: row } = await supabase
+    .from("cycle_snapshots")
+    .select("id, label, frozen_at, frozen_by, data")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!row) return null;
+
+  const emailById = await getEmailsByUserId(supabase, [row.frozen_by]);
+
+  return {
+    id: row.id,
+    label: row.label,
+    frozenAt: formatDateTime(row.frozen_at),
+    frozenByEmail: row.frozen_by ? (emailById.get(row.frozen_by) ?? null) : null,
+    data: row.data as SnapshotData,
+  };
 }

@@ -120,3 +120,21 @@ export interface ProfileWithRole {
   email: string;
   role: UserRole | null;
 }
+
+// What a frozen snapshot's `data` column holds — the same shapes the
+// live pages already render, so viewing a snapshot can reuse them.
+export interface SnapshotData {
+  sections: Section[];
+  scopeItems: ScopeItem[];
+}
+
+export interface SnapshotSummary {
+  id: string;
+  label: string;
+  frozenAt: string; // display date + time
+  frozenByEmail: string | null;
+}
+
+export interface SnapshotDetail extends SnapshotSummary {
+  data: SnapshotData;
+}

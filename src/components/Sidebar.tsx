@@ -10,6 +10,7 @@ const INTERNAL_NAV = [
   { href: "/evidence", label: "Evidence Library" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/my-items", label: "My Items" },
+  { href: "/history", label: "History" },
 ];
 
 const SUPPLIER_NAV = [{ href: "/", label: "Your Indicators" }];

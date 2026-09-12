@@ -40,11 +40,15 @@ export default async function HistoryPage() {
           )}
           {snapshots.map((s) => (
             <tr key={s.id}>
-              <td>
+              <td className="row-link-cell">
                 <Link href={`/history/${s.id}`}>{s.label}</Link>
               </td>
-              <td>{s.frozenAt}</td>
-              <td>{s.frozenByEmail ?? "—"}</td>
+              <td className="row-link-cell">
+                <Link href={`/history/${s.id}`}>{s.frozenAt}</Link>
+              </td>
+              <td className="row-link-cell">
+                <Link href={`/history/${s.id}`}>{s.frozenByEmail ?? "—"}</Link>
+              </td>
             </tr>
           ))}
         </tbody>

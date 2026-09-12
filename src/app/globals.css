@@ -503,6 +503,23 @@ td {
   font-size: 13px;
   border-bottom: 1px solid var(--rule);
 }
+/* Makes an entire row navigable without JS — each cell's content is
+   wrapped in a Link that fills the cell, rather than only the text
+   inside one column being clickable. */
+td.row-link-cell {
+  padding: 0;
+}
+td.row-link-cell a {
+  display: block;
+  padding: 11px 14px;
+  color: inherit;
+}
+tr:has(td.row-link-cell) {
+  cursor: pointer;
+}
+tr:has(td.row-link-cell):hover {
+  background: #f5f6f3;
+}
 tr:last-child td {
   border-bottom: none;
 }

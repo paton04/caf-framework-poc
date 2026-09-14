@@ -9,27 +9,40 @@ import type { IgpStatus } from "@/lib/caf-data/types";
 // as the calling user via the server client, so a disallowed write fails
 // at the database rather than needing to be re-checked here.
 
+// Assessments aren't pre-seeded per scope item (there'd be scope items x
+// 16 rows to create up front for no reason), so this upserts rather than
+// assuming the row already exists.
 export async function updateAssessment(
+  scopeItemId: string,
   igpCode: string,
   patch: Partial<{ status: IgpStatus; narrative: string; owner: string; ownerId: string | null }>
 ) {
   const { ownerId, ...rest } = patch;
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("igp_assessments")
-    .update({
+  const { error } = await supabase.from("igp_assessments").upsert(
+    {
+      scope_item_id: scopeItemId,
+      igp_code: igpCode,
       ...rest,
       ...(ownerId !== undefined ? { owner_id: ownerId } : {}),
       updated_at: new Date().toISOString(),
-    })
-    .eq("igp_code", igpCode);
+    },
+    { onConflict: "scope_item_id,igp_code" }
+  );
 
   if (error) throw new Error(error.message);
-  revalidatePath("/");
+  revalidatePath(`/scope/${scopeItemId}`);
   revalidatePath("/my-items");
 }
 
-export async function addEvidence(igpCode: string, formData: FormData) {
+// scopeItemId is null for supplier uploads — suppliers aren't part of the
+// scope-item restructure (deferred, see session notes), they still just
+// attach evidence to an IGP directly.
+export async function addEvidence(
+  igpCode: string,
+  formData: FormData,
+  scopeItemId: string | null = null
+) {
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     throw new Error("No file selected.");
@@ -45,11 +58,12 @@ export async function addEvidence(igpCode: string, formData: FormData) {
 
   const { error: insertError } = await supabase.from("evidence_files").insert({
     igp_code: igpCode,
+    scope_item_id: scopeItemId,
     file_name: file.name,
     storage_path: storagePath,
   });
   if (insertError) throw new Error(insertError.message);
 
-  revalidatePath("/");
   revalidatePath("/evidence");
+  if (scopeItemId) revalidatePath(`/scope/${scopeItemId}`);
 }

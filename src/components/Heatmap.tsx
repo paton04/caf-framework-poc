@@ -11,19 +11,21 @@ interface Selection {
   igpId: string;
 }
 
-// Owner/admin + contributor view. `sections` is the server-fetched source
-// of truth — mutations go straight to Supabase via Server Actions, then
-// router.refresh() re-fetches rather than the component tracking its own
-// copy of the data.
 interface InternalUser {
   id: string;
   email: string;
 }
 
+// One scope item's own assessment. `sections` is the server-fetched
+// source of truth — mutations go straight to Supabase via Server
+// Actions, then router.refresh() re-fetches rather than the component
+// tracking its own copy of the data.
 export function Heatmap({
+  scopeItemId,
   sections,
   internalUsers,
 }: {
+  scopeItemId: string;
   sections: Section[];
   internalUsers: InternalUser[];
 }) {
@@ -43,6 +45,7 @@ export function Heatmap({
     partial: principles.filter((p) => p.status === "partial").length,
     not: principles.filter((p) => p.status === "not").length,
     none: principles.filter((p) => p.status === "none").length,
+    not_applicable: principles.filter((p) => p.status === "not_applicable").length,
   };
   const pendingEvidence = principles
     .flatMap((p) => p.evidence)
@@ -51,7 +54,7 @@ export function Heatmap({
   function handleStatusChange(status: IgpStatus) {
     if (!selection) return;
     startTransition(async () => {
-      await updateAssessment(selection.igpId, { status });
+      await updateAssessment(scopeItemId, selection.igpId, { status });
       router.refresh();
     });
   }
@@ -59,7 +62,7 @@ export function Heatmap({
   function handleSaveDetails(narrative: string, owner: string, ownerId: string | null) {
     if (!selection) return;
     startTransition(async () => {
-      await updateAssessment(selection.igpId, { narrative, owner, ownerId });
+      await updateAssessment(scopeItemId, selection.igpId, { narrative, owner, ownerId });
       router.refresh();
     });
   }
@@ -67,7 +70,7 @@ export function Heatmap({
   function handleAddEvidence(formData: FormData) {
     if (!selection) return;
     startTransition(async () => {
-      await addEvidence(selection.igpId, formData);
+      await addEvidence(selection.igpId, formData, scopeItemId);
       router.refresh();
     });
   }
@@ -90,6 +93,10 @@ export function Heatmap({
         <div className="stat-tile st-none">
           <div className="stat-num">{counts.none}</div>
           <div className="stat-label">Not started</div>
+        </div>
+        <div className="stat-tile st-none">
+          <div className="stat-num">{counts.not_applicable}</div>
+          <div className="stat-label">Not applicable</div>
         </div>
         <div className="stat-tile pending">
           <div className="stat-num">{pendingEvidence}</div>
@@ -136,7 +143,7 @@ export function Heatmap({
         </span>
         <span>
           <span className="dot" style={{ background: "var(--not-started)" }} />
-          Not started
+          Not started / not applicable
         </span>
       </div>
 

@@ -59,6 +59,7 @@ export function EvidenceLibrary({
         <thead>
           <tr>
             <th>File</th>
+            <th>Scope item</th>
             <th>Linked indicator</th>
             <th>Uploaded</th>
             <th>Status</th>
@@ -68,12 +69,13 @@ export function EvidenceLibrary({
         <tbody>
           {rows.length === 0 && (
             <tr>
-              <td colSpan={5}>No evidence uploaded yet.</td>
+              <td colSpan={6}>No evidence uploaded yet.</td>
             </tr>
           )}
           {rows.map((row) => (
             <tr key={row.id} style={{ cursor: "pointer" }} onClick={() => open(row)}>
               <td>{row.file}</td>
+              <td>{row.scopeItemName ?? "—"}</td>
               <td className="mono">{row.linkedIgp}</td>
               <td>{row.uploaded}</td>
               <td>

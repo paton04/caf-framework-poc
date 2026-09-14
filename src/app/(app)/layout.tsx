@@ -8,6 +8,7 @@ const ROLE_LABEL: Record<string, string> = {
   owner_admin: "Owner/Admin",
   contributor: "Contributor",
   supplier: "Supplier",
+  grc: "GRC",
 };
 
 export default async function AppShellLayout({ children }: { children: React.ReactNode }) {

@@ -3,14 +3,15 @@
 // live in seed.ts alongside demo data; now that every page reads from
 // Supabase directly, seed.ts is gone and this is what's left.
 
-export type IgpStatus = "achieved" | "partial" | "not" | "none";
-export type UserRole = "owner_admin" | "contributor" | "supplier";
+export type IgpStatus = "achieved" | "partial" | "not" | "none" | "not_applicable";
+export type UserRole = "owner_admin" | "contributor" | "supplier" | "grc";
 
 export const statusLabel: Record<IgpStatus, string> = {
   achieved: "Achieved",
   partial: "Partially achieved",
   not: "Not achieved",
   none: "Not started",
+  not_applicable: "Not applicable",
 };
 
 export const statusClass: Record<IgpStatus, string> = {
@@ -18,9 +19,12 @@ export const statusClass: Record<IgpStatus, string> = {
   partial: "st-partial",
   not: "st-not",
   none: "st-none",
+  // Reuses "not started"'s grey — visually similar is fine, the label
+  // text is what actually distinguishes "N/A" from "not started".
+  not_applicable: "st-none",
 };
 
-export const statusOrder: IgpStatus[] = ["none", "partial", "achieved", "not"];
+export const statusOrder: IgpStatus[] = ["none", "partial", "achieved", "not", "not_applicable"];
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
 
@@ -92,6 +96,7 @@ export interface EvidenceLibraryRow {
   id: string;
   file: string;
   linkedIgp: string;
+  scopeItemName: string | null;
   uploaded: string;
   uploadedByEmail: string | null;
   reviewStatus: ReviewStatus;
@@ -99,6 +104,13 @@ export interface EvidenceLibraryRow {
   reviewedByEmail: string | null;
   reviewedAt: string | null;
   expiryDate: string | null;
+}
+
+// One scope item's full CAF assessment — the unit of work in the
+// drill-down view (Overview -> a scope item -> its own heatmap).
+export interface ScopeItemAssessment {
+  scopeItem: ScopeItem;
+  sections: Section[];
 }
 
 export interface SupplierRow {
@@ -123,9 +135,10 @@ export interface ProfileWithRole {
 
 // What a frozen snapshot's `data` column holds — the same shapes the
 // live pages already render, so viewing a snapshot can reuse them.
+// One assessment tree per scope item, since status is scope-item-specific.
 export interface SnapshotData {
-  sections: Section[];
   scopeItems: ScopeItem[];
+  assessments: ScopeItemAssessment[];
 }
 
 export interface SnapshotSummary {

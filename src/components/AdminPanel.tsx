@@ -8,6 +8,7 @@ import type { ProfileWithRole, UserRole } from "@/lib/caf-data/types";
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "owner_admin", label: "Owner/Admin" },
   { value: "contributor", label: "Contributor" },
+  { value: "grc", label: "GRC" },
   { value: "supplier", label: "Supplier" },
 ];
 

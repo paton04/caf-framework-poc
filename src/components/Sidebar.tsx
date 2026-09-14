@@ -15,6 +15,10 @@ const INTERNAL_NAV = [
 
 const SUPPLIER_NAV = [{ href: "/", label: "Your Indicators" }];
 
+// GRC's whole job is reviewing evidence — no need for the doer-focused
+// pages (scope register, my items, etc.).
+const GRC_NAV = [{ href: "/evidence", label: "Evidence Library" }];
+
 // No role assigned yet — deliberately minimal, not the full internal nav.
 const UNASSIGNED_NAV = [{ href: "/", label: "Overview" }];
 
@@ -27,7 +31,9 @@ export function Sidebar({ role }: { role: UserRole | null }) {
         ? INTERNAL_NAV
         : role === "supplier"
           ? SUPPLIER_NAV
-          : UNASSIGNED_NAV;
+          : role === "grc"
+            ? GRC_NAV
+            : UNASSIGNED_NAV;
 
   return (
     <div className="sidebar">

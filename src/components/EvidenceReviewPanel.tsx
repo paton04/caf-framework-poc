@@ -20,9 +20,10 @@ interface EvidenceReviewPanelProps {
 
 // canReview and the self-upload check both just gate the UI here — the
 // real enforcement for both is a database trigger (0004_evidence_review.sql,
-// extended by 0011 for the self-upload rule), so a Contributor or an
-// uploader reviewing their own evidence some other way still gets
-// rejected at the DB level regardless of what this component shows.
+// extended by 0011 for the self-upload rule and 0012 to move review from
+// Owner/Admin to GRC), so a non-GRC role or an uploader reviewing their
+// own evidence some other way still gets rejected at the DB level
+// regardless of what this component shows.
 export function EvidenceReviewPanel({
   row,
   canReview,
@@ -65,6 +66,13 @@ export function EvidenceReviewPanel({
             <div className="overlay-body">
               {error && <div className="banner auth-error">{error}</div>}
 
+              {row.scopeItemName && (
+                <div className="field">
+                  <label>Scope item</label>
+                  <div className="fmeta">{row.scopeItemName}</div>
+                </div>
+              )}
+
               <div className="field">
                 <label>Status</label>
                 <span className={`status ${reviewStatusClass[row.reviewStatus]}`}>
@@ -106,7 +114,7 @@ export function EvidenceReviewPanel({
 
               {canReview && isOwnUpload && (
                 <div className="banner">
-                  You uploaded this — ask another Owner/Admin to review it.
+                  You uploaded this — ask another GRC reviewer to review it.
                   Reviewing your own evidence isn&apos;t allowed.
                 </div>
               )}

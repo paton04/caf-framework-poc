@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getMyItems } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
@@ -17,8 +18,9 @@ export default async function MyItemsPage() {
       <h1 className="page-title">My items</h1>
       <p className="page-sub">
         Indicators and scope items linked to your account specifically —
-        not just assigned by name. Link an item to your account from its
-        own edit panel on Overview or the Scope Register.
+        not just assigned by name. Link an indicator to your account from
+        its side panel on a scope item&apos;s assessment page, or a scope
+        item from its edit panel on the Scope Register.
       </p>
 
       <h2 className="page-title" style={{ fontSize: 16 }}>
@@ -27,6 +29,7 @@ export default async function MyItemsPage() {
       <table>
         <thead>
           <tr>
+            <th>Scope item</th>
             <th>Code</th>
             <th>Name</th>
             <th>Status</th>
@@ -35,14 +38,25 @@ export default async function MyItemsPage() {
         <tbody>
           {igps.length === 0 && (
             <tr>
-              <td colSpan={3}>Nothing linked to you yet.</td>
+              <td colSpan={4}>Nothing linked to you yet.</td>
             </tr>
           )}
           {igps.map((igp) => (
-            <tr key={igp.code}>
-              <td className="mono">{igp.code}</td>
-              <td>{igp.name}</td>
-              <td>{statusLabel[igp.status as IgpStatus]}</td>
+            <tr key={`${igp.scopeItemId}-${igp.code}`}>
+              <td className="row-link-cell">
+                <Link href={`/scope/${igp.scopeItemId}`}>{igp.scopeItemName}</Link>
+              </td>
+              <td className="row-link-cell">
+                <Link href={`/scope/${igp.scopeItemId}`} className="mono">
+                  {igp.code}
+                </Link>
+              </td>
+              <td className="row-link-cell">
+                <Link href={`/scope/${igp.scopeItemId}`}>{igp.name}</Link>
+              </td>
+              <td className="row-link-cell">
+                <Link href={`/scope/${igp.scopeItemId}`}>{statusLabel[igp.status as IgpStatus]}</Link>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -67,9 +81,15 @@ export default async function MyItemsPage() {
           )}
           {scopeItems.map((item) => (
             <tr key={item.id}>
-              <td>{item.name}</td>
-              <td>{item.type}</td>
-              <td>{item.criticality}</td>
+              <td className="row-link-cell">
+                <Link href={`/scope/${item.id}`}>{item.name}</Link>
+              </td>
+              <td className="row-link-cell">
+                <Link href={`/scope/${item.id}`}>{item.type}</Link>
+              </td>
+              <td className="row-link-cell">
+                <Link href={`/scope/${item.id}`}>{item.criticality}</Link>
+              </td>
             </tr>
           ))}
         </tbody>

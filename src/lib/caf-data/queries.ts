@@ -6,6 +6,7 @@ import type {
   Igp,
   ProfileWithRole,
   ScopeItem,
+  ScopeItemAssessment,
   Section,
   SnapshotData,
   SnapshotDetail,
@@ -35,6 +36,7 @@ function formatDateTime(iso: string): string {
 interface EvidenceRow {
   id: string;
   igp_code: string;
+  scope_item_id: string | null;
   file_name: string;
   storage_path: string;
   uploaded_at: string;
@@ -47,7 +49,7 @@ interface EvidenceRow {
 }
 
 const EVIDENCE_COLUMNS =
-  "id, igp_code, file_name, storage_path, uploaded_at, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, expiry_date";
+  "id, igp_code, scope_item_id, file_name, storage_path, uploaded_at, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, expiry_date";
 
 /** Emails for a set of user ids, keyed by id — skips ids that are null/absent. */
 async function getEmailsByUserId(
@@ -59,6 +61,18 @@ async function getEmailsByUserId(
 
   const { data } = await supabase.from("profiles").select("id, email").in("id", uniqueIds);
   return new Map((data ?? []).map((p) => [p.id, p.email]));
+}
+
+/** Scope item names for a set of ids, keyed by id — skips null/absent ids. */
+async function getScopeItemNamesById(
+  supabase: SupabaseClient,
+  ids: (string | null)[]
+): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(ids.filter((id): id is string => !!id))];
+  if (uniqueIds.length === 0) return new Map();
+
+  const { data } = await supabase.from("scope_items").select("id, name").in("id", uniqueIds);
+  return new Map((data ?? []).map((s) => [s.id, s.name]));
 }
 
 function mapEvidenceRow(row: EvidenceRow, emailById: Map<string, string>): EvidenceFile {
@@ -93,26 +107,46 @@ export async function getCurrentUserRole(
   return (data?.role as UserRole | undefined) ?? null;
 }
 
-/** Full section -> IGP tree with live assessment state and evidence merged in. */
-export async function getSections(supabase: SupabaseClient): Promise<Section[]> {
-  const [sectionsRes, igpsRes, assessmentsRes, evidenceRes] = await Promise.all([
+/**
+ * One scope item's full CAF assessment — every section/indicator, with
+ * that item's own status/narrative/owner and evidence. This is the unit
+ * of work per Zuber's restructure: B2.a can be Achieved for one scope
+ * item and Not applicable for another, so assessment is keyed by
+ * (scope_item, igp), not by igp alone.
+ */
+export async function getScopeItemAssessment(
+  supabase: SupabaseClient,
+  scopeItemId: string
+): Promise<ScopeItemAssessment | null> {
+  const [scopeItemRes, sectionsRes, igpsRes, assessmentsRes, evidenceRes] = await Promise.all([
+    supabase
+      .from("scope_items")
+      .select("id, name, type, description, essential_function, criticality, owner, owner_id")
+      .eq("id", scopeItemId)
+      .maybeSingle(),
     supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
     supabase
       .from("caf_igps")
       .select("code, section_code, name, sort_order, guidance, guidance_note")
       .order("sort_order"),
-    supabase.from("igp_assessments").select("igp_code, status, narrative, owner, owner_id"),
+    supabase
+      .from("igp_assessments")
+      .select("igp_code, status, narrative, owner, owner_id")
+      .eq("scope_item_id", scopeItemId),
     supabase
       .from("evidence_files")
       .select(EVIDENCE_COLUMNS)
+      .eq("scope_item_id", scopeItemId)
       .order("uploaded_at", { ascending: false }),
   ]);
+
+  if (!scopeItemRes.data) return null;
 
   const assessments = assessmentsRes.data ?? [];
   const assessmentByIgp = new Map(assessments.map((a) => [a.igp_code, a]));
   const ownerEmailById = await getEmailsByUserId(
     supabase,
-    assessments.map((a) => a.owner_id)
+    [...assessments.map((a) => a.owner_id), scopeItemRes.data.owner_id]
   );
 
   const evidenceRows = (evidenceRes.data ?? []) as EvidenceRow[];
@@ -124,7 +158,7 @@ export async function getSections(supabase: SupabaseClient): Promise<Section[]> 
     evidenceByIgp.set(row.igp_code, list);
   }
 
-  return (sectionsRes.data ?? []).map((sec) => ({
+  const sections: Section[] = (sectionsRes.data ?? []).map((sec) => ({
     code: sec.code,
     name: sec.name,
     principles: (igpsRes.data ?? [])
@@ -145,6 +179,32 @@ export async function getSections(supabase: SupabaseClient): Promise<Section[]> 
         };
       }),
   }));
+
+  const sir = scopeItemRes.data;
+  const scopeItem: ScopeItem = {
+    id: sir.id,
+    name: sir.name,
+    type: sir.type,
+    description: sir.description,
+    essentialFunction: sir.essential_function,
+    criticality: sir.criticality,
+    owner: sir.owner,
+    ownerId: sir.owner_id,
+    ownerEmail: sir.owner_id ? (ownerEmailById.get(sir.owner_id) ?? null) : null,
+  };
+
+  return { scopeItem, sections };
+}
+
+/** Every scope item's full assessment — used only for freezing a snapshot. */
+export async function getAllScopeItemAssessments(
+  supabase: SupabaseClient
+): Promise<ScopeItemAssessment[]> {
+  const scopeItems = await getScopeItems(supabase);
+  const assessments = await Promise.all(
+    scopeItems.map((s) => getScopeItemAssessment(supabase, s.id))
+  );
+  return assessments.filter((a): a is ScopeItemAssessment => a !== null);
 }
 
 /** Just the IGPs a supplier is linked to, for their restricted view. */
@@ -236,6 +296,10 @@ export async function getEvidenceLibrary(
 
   const rows = (data ?? []) as EvidenceRow[];
   const evidenceEmailById = await getEmailsByUserId(supabase, evidenceEmailIds(rows));
+  const scopeItemNameById = await getScopeItemNamesById(
+    supabase,
+    rows.map((r) => r.scope_item_id)
+  );
 
   return rows.map((row) => {
     const evidence = mapEvidenceRow(row, evidenceEmailById);
@@ -243,6 +307,7 @@ export async function getEvidenceLibrary(
       id: evidence.id,
       file: evidence.name,
       linkedIgp: row.igp_code,
+      scopeItemName: row.scope_item_id ? (scopeItemNameById.get(row.scope_item_id) ?? null) : null,
       uploaded: evidence.date,
       uploadedByEmail: evidence.uploadedByEmail,
       reviewStatus: evidence.reviewStatus,
@@ -318,18 +383,32 @@ export async function getInternalUsers(
 export async function getMyItems(
   supabase: SupabaseClient,
   userId: string
-): Promise<{ igps: { code: string; name: string; sectionCode: string; status: string }[]; scopeItems: ScopeItem[] }> {
+): Promise<{
+  igps: {
+    scopeItemId: string;
+    scopeItemName: string;
+    code: string;
+    name: string;
+    sectionCode: string;
+    status: string;
+  }[];
+  scopeItems: ScopeItem[];
+}> {
   const [assessmentsRes, scopeRes] = await Promise.all([
     supabase
       .from("igp_assessments")
-      .select("igp_code, status, caf_igps!inner(name, section_code)")
+      .select("igp_code, scope_item_id, status, caf_igps!inner(name, section_code)")
       .eq("owner_id", userId),
     getScopeItems(supabase),
   ]);
 
+  const scopeItemById = new Map(scopeRes.map((s) => [s.id, s.name]));
+
   const igps = (assessmentsRes.data ?? []).map((row) => {
     const igp = Array.isArray(row.caf_igps) ? row.caf_igps[0] : row.caf_igps;
     return {
+      scopeItemId: row.scope_item_id,
+      scopeItemName: scopeItemById.get(row.scope_item_id) ?? "Unknown scope item",
       code: row.igp_code,
       name: igp?.name ?? row.igp_code,
       sectionCode: igp?.section_code ?? "",

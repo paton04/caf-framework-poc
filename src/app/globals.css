@@ -419,7 +419,8 @@ button {
   color: var(--not-achieved);
   border-color: var(--not-achieved);
 }
-.status-opt.sel-none {
+.status-opt.sel-none,
+.status-opt.sel-not_applicable {
   background: var(--not-started-bg);
   color: var(--not-started);
   border-color: var(--not-started);

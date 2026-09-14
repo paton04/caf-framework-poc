@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getScopeItems, getSections } from "@/lib/caf-data/queries";
+import { getAllScopeItemAssessments, getScopeItems } from "@/lib/caf-data/queries";
 
 // RLS restricts inserting into cycle_snapshots to owner_admin already —
 // that's the real enforcement. frozen_by is stamped by a trigger, not
@@ -11,14 +11,14 @@ export async function freezeCycle(label: string) {
   if (!label.trim()) throw new Error("Give this cycle a name before freezing it.");
 
   const supabase = await createClient();
-  const [sections, scopeItems] = await Promise.all([
-    getSections(supabase),
+  const [assessments, scopeItems] = await Promise.all([
+    getAllScopeItemAssessments(supabase),
     getScopeItems(supabase),
   ]);
 
   const { error } = await supabase.from("cycle_snapshots").insert({
     label: label.trim(),
-    data: { sections, scopeItems },
+    data: { assessments, scopeItems },
   });
 
   if (error) throw new Error(error.message);

@@ -25,50 +25,10 @@ export default async function SnapshotDetailPage({
         changed since.
       </p>
 
-      {snapshot.data.sections.map((sec) => (
-        <div key={sec.code} style={{ marginBottom: 28 }}>
-          <h2 className="page-title" style={{ fontSize: 16 }}>
-            Section {sec.code} — {sec.name}
-          </h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Narrative</th>
-                <th>Owner</th>
-                <th>Evidence</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sec.principles.map((p) => (
-                <tr key={p.id}>
-                  <td className="mono">{p.id}</td>
-                  <td>{p.name}</td>
-                  <td>
-                    <span className={`status ${statusClass[p.status]}`}>{statusLabel[p.status]}</span>
-                  </td>
-                  <td>{p.narrative || "—"}</td>
-                  <td>{p.owner || "Unassigned"}</td>
-                  <td>
-                    {p.evidence.length === 0
-                      ? "—"
-                      : p.evidence
-                          .map((f) => `${f.name} (${reviewStatusLabel[f.reviewStatus]})`)
-                          .join(", ")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-
       <h2 className="page-title" style={{ fontSize: 16 }}>
         Scope register
       </h2>
-      <table>
+      <table style={{ marginBottom: 28 }}>
         <thead>
           <tr>
             <th>Name</th>
@@ -95,6 +55,53 @@ export default async function SnapshotDetailPage({
           ))}
         </tbody>
       </table>
+
+      {snapshot.data.assessments.map(({ scopeItem, sections }) => (
+        <div key={scopeItem.id} style={{ marginBottom: 32 }}>
+          <h2 className="page-title" style={{ fontSize: 16 }}>
+            {scopeItem.name}
+          </h2>
+          {sections.map((sec) => (
+            <div key={sec.code} style={{ marginBottom: 16 }}>
+              <p className="page-sub" style={{ margin: "0 0 6px 0" }}>
+                Section {sec.code} — {sec.name}
+              </p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Narrative</th>
+                    <th>Owner</th>
+                    <th>Evidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sec.principles.map((p) => (
+                    <tr key={p.id}>
+                      <td className="mono">{p.id}</td>
+                      <td>{p.name}</td>
+                      <td>
+                        <span className={`status ${statusClass[p.status]}`}>{statusLabel[p.status]}</span>
+                      </td>
+                      <td>{p.narrative || "—"}</td>
+                      <td>{p.owner || "Unassigned"}</td>
+                      <td>
+                        {p.evidence.length === 0
+                          ? "—"
+                          : p.evidence
+                              .map((f) => `${f.name} (${reviewStatusLabel[f.reviewStatus]})`)
+                              .join(", ")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+      ))}
     </>
   );
 }

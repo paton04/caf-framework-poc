@@ -427,3 +427,14 @@ export async function getSnapshotDetail(
     data: row.data as SnapshotData,
   };
 }
+
+/** The current announcement text, or null if none is set. Readable by any
+ * signed-in user — an announcement is meant to be broadly visible. */
+export async function getAnnouncement(supabase: SupabaseClient): Promise<string | null> {
+  const { data } = await supabase
+    .from("app_settings")
+    .select("announcement")
+    .eq("id", "singleton")
+    .maybeSingle();
+  return data?.announcement || null;
+}

@@ -159,6 +159,13 @@ button {
   color: var(--ink-soft);
 }
 
+.announcement-banner {
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 10px 28px;
+  font-size: 13px;
+}
+
 .content {
   padding: 28px;
   flex: 1;
@@ -173,6 +180,46 @@ button {
   color: var(--ink-soft);
   margin: 0 0 22px 0;
   max-width: 640px;
+}
+
+/* PROGRESS SUMMARY */
+.progress-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-tile {
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  padding: 10px 16px;
+  min-width: 120px;
+}
+.stat-num {
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+.stat-tile.st-achieved .stat-num {
+  color: var(--achieved);
+}
+.stat-tile.st-partial .stat-num {
+  color: var(--partial);
+}
+.stat-tile.st-not .stat-num {
+  color: var(--not-achieved);
+}
+.stat-tile.st-none .stat-num {
+  color: var(--not-started);
+}
+.stat-tile.pending .stat-num {
+  color: var(--ink);
 }
 
 /* HEATMAP */

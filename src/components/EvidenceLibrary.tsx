@@ -9,9 +9,11 @@ import { reviewStatusClass, reviewStatusLabel, type EvidenceLibraryRow } from "@
 export function EvidenceLibrary({
   rows,
   canReview,
+  currentUserEmail,
 }: {
   rows: EvidenceLibraryRow[];
   canReview: boolean;
+  currentUserEmail: string | null;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<EvidenceLibraryRow | null>(null);
@@ -88,6 +90,7 @@ export function EvidenceLibrary({
       <EvidenceReviewPanel
         row={selected}
         canReview={canReview}
+        currentUserEmail={currentUserEmail}
         pending={isPending}
         error={error}
         onClose={() => setSelected(null)}

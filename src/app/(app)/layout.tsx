@@ -1,6 +1,8 @@
 import { Sidebar } from "@/components/Sidebar";
 import { signOut } from "@/app/actions/auth";
 import { getSessionAndRole } from "@/lib/auth";
+import { getAnnouncement } from "@/lib/caf-data/queries";
+import { createClient } from "@/lib/supabase/server";
 
 const ROLE_LABEL: Record<string, string> = {
   owner_admin: "Owner/Admin",
@@ -10,6 +12,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default async function AppShellLayout({ children }: { children: React.ReactNode }) {
   const { user, role } = await getSessionAndRole();
+  const announcement = user ? await getAnnouncement(await createClient()) : null;
 
   return (
     <div className="shell">
@@ -30,6 +33,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
             </form>
           </div>
         </div>
+        {announcement && <div className="announcement-banner">{announcement}</div>}
         <div className="content">{children}</div>
       </div>
     </div>

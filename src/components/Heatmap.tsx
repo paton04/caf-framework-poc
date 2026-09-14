@@ -37,6 +37,17 @@ export function Heatmap({
         ?.principles.find((p) => p.id === selection.igpId) ?? null
     : null;
 
+  const principles = sections.flatMap((s) => s.principles);
+  const counts = {
+    achieved: principles.filter((p) => p.status === "achieved").length,
+    partial: principles.filter((p) => p.status === "partial").length,
+    not: principles.filter((p) => p.status === "not").length,
+    none: principles.filter((p) => p.status === "none").length,
+  };
+  const pendingEvidence = principles
+    .flatMap((p) => p.evidence)
+    .filter((e) => e.reviewStatus === "pending").length;
+
   function handleStatusChange(status: IgpStatus) {
     if (!selection) return;
     startTransition(async () => {
@@ -63,6 +74,29 @@ export function Heatmap({
 
   return (
     <>
+      <div className="progress-strip">
+        <div className="stat-tile st-achieved">
+          <div className="stat-num">{counts.achieved}</div>
+          <div className="stat-label">Achieved</div>
+        </div>
+        <div className="stat-tile st-partial">
+          <div className="stat-num">{counts.partial}</div>
+          <div className="stat-label">Partially achieved</div>
+        </div>
+        <div className="stat-tile st-not">
+          <div className="stat-num">{counts.not}</div>
+          <div className="stat-label">Not achieved</div>
+        </div>
+        <div className="stat-tile st-none">
+          <div className="stat-num">{counts.none}</div>
+          <div className="stat-label">Not started</div>
+        </div>
+        <div className="stat-tile pending">
+          <div className="stat-num">{pendingEvidence}</div>
+          <div className="stat-label">Evidence pending review</div>
+        </div>
+      </div>
+
       <div className="heatmap-wrap">
         {sections.map((sec) => (
           <div className="heatmap-row" key={sec.code}>

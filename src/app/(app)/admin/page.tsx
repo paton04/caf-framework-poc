@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { AdminPanel } from "@/components/AdminPanel";
+import { AnnouncementForm } from "@/components/AnnouncementForm";
 import {
   getAllIgpCodes,
+  getAnnouncement,
   getAuditLog,
   getProfilesWithRoles,
   getSuppliers,
@@ -14,11 +16,12 @@ export default async function AdminPage() {
   if (role !== "owner_admin") redirect("/");
 
   const supabase = await createClient();
-  const [profiles, igps, suppliers, auditLog] = await Promise.all([
+  const [profiles, igps, suppliers, auditLog, announcement] = await Promise.all([
     getProfilesWithRoles(supabase),
     getAllIgpCodes(supabase),
     getSuppliers(supabase),
     getAuditLog(supabase),
+    getAnnouncement(supabase),
   ]);
 
   const supplierAccess = Object.fromEntries(suppliers.map((s) => [s.userId, s.igpCodes]));
@@ -33,6 +36,12 @@ export default async function AdminPage() {
         signed up.
       </p>
       <AdminPanel profiles={profiles} igps={igps} supplierAccess={supplierAccess} />
+
+      <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
+        Announcement
+      </h2>
+      <p className="page-sub">Shown to everyone signed in, until cleared.</p>
+      <AnnouncementForm current={announcement} />
 
       <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
         Activity log

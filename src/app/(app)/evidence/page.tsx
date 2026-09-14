@@ -7,7 +7,7 @@ import { getSessionAndRole } from "@/lib/auth";
 // Internal roles only — allow-listed so an unassigned account (role ===
 // null) is denied too, not silently treated as internal.
 export default async function EvidencePage() {
-  const { role } = await getSessionAndRole();
+  const { user, role } = await getSessionAndRole();
   if (role !== "owner_admin" && role !== "contributor") redirect("/");
 
   const evidenceLibrary = await getEvidenceLibrary(await createClient());
@@ -25,7 +25,11 @@ export default async function EvidencePage() {
           Owner/Admin can approve or reject it.
         </div>
       )}
-      <EvidenceLibrary rows={evidenceLibrary} canReview={role === "owner_admin"} />
+      <EvidenceLibrary
+        rows={evidenceLibrary}
+        canReview={role === "owner_admin"}
+        currentUserEmail={user?.email ?? null}
+      />
     </>
   );
 }

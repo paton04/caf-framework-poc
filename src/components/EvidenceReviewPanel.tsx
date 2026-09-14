@@ -10,6 +10,7 @@ import {
 interface EvidenceReviewPanelProps {
   row: EvidenceLibraryRow | null;
   canReview: boolean;
+  currentUserEmail: string | null;
   pending: boolean;
   error: string | null;
   onClose: () => void;
@@ -17,12 +18,15 @@ interface EvidenceReviewPanelProps {
   onReject: (note: string) => void;
 }
 
-// canReview gates the action buttons here, but the real enforcement is a
-// database trigger (0004_evidence_review.sql) — a Contributor hitting
-// these actions some other way still gets rejected at the DB level.
+// canReview and the self-upload check both just gate the UI here — the
+// real enforcement for both is a database trigger (0004_evidence_review.sql,
+// extended by 0011 for the self-upload rule), so a Contributor or an
+// uploader reviewing their own evidence some other way still gets
+// rejected at the DB level regardless of what this component shows.
 export function EvidenceReviewPanel({
   row,
   canReview,
+  currentUserEmail,
   pending,
   error,
   onClose,
@@ -30,6 +34,9 @@ export function EvidenceReviewPanel({
   onReject,
 }: EvidenceReviewPanelProps) {
   const open = row !== null;
+  const isOwnUpload =
+    !!row && !!currentUserEmail && row.uploadedByEmail === currentUserEmail;
+  const canAct = canReview && !isOwnUpload;
 
   const [expiryDate, setExpiryDate] = useState("");
   const [note, setNote] = useState("");
@@ -97,7 +104,14 @@ export function EvidenceReviewPanel({
                 </div>
               )}
 
-              {canReview && (
+              {canReview && isOwnUpload && (
+                <div className="banner">
+                  You uploaded this — ask another Owner/Admin to review it.
+                  Reviewing your own evidence isn&apos;t allowed.
+                </div>
+              )}
+
+              {canAct && (
                 <>
                   <div className="field">
                     <label>Expiry date</label>
@@ -129,7 +143,7 @@ export function EvidenceReviewPanel({
                 </>
               )}
             </div>
-            {canReview && (
+            {canAct && (
               <div className="overlay-foot">
                 <button
                   className="btn-primary"

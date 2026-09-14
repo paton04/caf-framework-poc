@@ -9,8 +9,10 @@ import { getSessionAndRole } from "@/lib/auth";
 // or add a new one — then everything else (its own details, its CAF
 // assessment) happens on its own /scope/[id] page from there. This is
 // the only place scope items are listed; the standalone Scope Register
-// page is gone, it was pure duplication of this list.
-export default async function OverviewPage() {
+// page is gone, it was pure duplication of this list. There's no real
+// "overview" until you click into an item, so this isn't called that
+// anymore — matches the "Scope Items" nav label.
+export default async function ScopeItemsPage() {
   const { user, role } = await getSessionAndRole();
   if (!user) redirect("/login");
 

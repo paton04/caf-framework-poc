@@ -46,6 +46,11 @@ export function ScopeItemDetailHeader({
   return (
     <>
       <h1 className="page-title">{scopeItem.name}</h1>
+      {scopeItem.description && (
+        <p className="page-sub" style={{ marginBottom: 6 }}>
+          {scopeItem.description}
+        </p>
+      )}
       <p className="page-sub">
         {scopeItem.type} — {scopeItem.essentialFunction || "no essential function set"} —{" "}
         {scopeItem.criticality}. Click any indicator to justify it for this

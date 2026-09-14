@@ -67,7 +67,14 @@ export function ScopeItemList({
           {items.map((item) => (
             <tr key={item.id}>
               <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>{item.name}</Link>
+                <Link href={`/scope/${item.id}`}>
+                  <div>{item.name}</div>
+                  {item.description && (
+                    <div style={{ marginTop: 2, fontSize: 12, color: "var(--ink-soft)" }}>
+                      {item.description}
+                    </div>
+                  )}
+                </Link>
               </td>
               <td className="row-link-cell">
                 <Link href={`/scope/${item.id}`}>{item.type}</Link>

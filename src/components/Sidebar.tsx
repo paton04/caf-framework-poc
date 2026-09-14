@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/lib/caf-data/types";
 
 const INTERNAL_NAV = [
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Scope Items" },
   { href: "/evidence", label: "Evidence Library" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/my-items", label: "My Items" },
@@ -19,7 +19,7 @@ const SUPPLIER_NAV = [{ href: "/", label: "Your Indicators" }];
 const GRC_NAV = [{ href: "/evidence", label: "Evidence Library" }];
 
 // No role assigned yet — deliberately minimal, not the full internal nav.
-const UNASSIGNED_NAV = [{ href: "/", label: "Overview" }];
+const UNASSIGNED_NAV = [{ href: "/", label: "Scope Items" }];
 
 export function Sidebar({ role }: { role: UserRole | null }) {
   const pathname = usePathname();

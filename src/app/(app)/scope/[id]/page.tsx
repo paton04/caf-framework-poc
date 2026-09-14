@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { Heatmap } from "@/components/Heatmap";
+import { ScopeItemDetailHeader } from "@/components/ScopeItemDetailHeader";
 import { getInternalUsers, getScopeItemAssessment } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
@@ -25,12 +26,7 @@ export default async function ScopeItemAssessmentPage({
 
   return (
     <>
-      <h1 className="page-title">{scopeItem.name}</h1>
-      <p className="page-sub">
-        {scopeItem.type} — {scopeItem.essentialFunction || "no essential function set"} —{" "}
-        {scopeItem.criticality}. Click any indicator to justify it for this
-        scope item specifically, and attach its evidence.
-      </p>
+      <ScopeItemDetailHeader scopeItem={scopeItem} internalUsers={internalUsers} />
       <Heatmap scopeItemId={scopeItem.id} sections={sections} internalUsers={internalUsers} />
     </>
   );

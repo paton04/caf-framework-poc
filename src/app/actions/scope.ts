@@ -26,21 +26,29 @@ function friendlyError(message: string): string {
   return message;
 }
 
-export async function createScopeItem(input: ScopeItemInput) {
+// Returns the new row's id so the caller can navigate straight into its
+// assessment page — creating a scope item is the entry point now, not a
+// standalone action on a register.
+export async function createScopeItem(input: ScopeItemInput): Promise<string> {
   const supabase = await createClient();
-  const { error } = await supabase.from("scope_items").insert({
-    name: input.name,
-    type: input.type,
-    description: input.description,
-    essential_function: input.essentialFunction,
-    criticality: input.criticality,
-    owner: input.owner,
-    owner_id: input.ownerId,
-  });
+  const { data, error } = await supabase
+    .from("scope_items")
+    .insert({
+      name: input.name,
+      type: input.type,
+      description: input.description,
+      essential_function: input.essentialFunction,
+      criticality: input.criticality,
+      owner: input.owner,
+      owner_id: input.ownerId,
+    })
+    .select("id")
+    .single();
 
   if (error) throw new Error(friendlyError(error.message));
-  revalidatePath("/scope");
+  revalidatePath("/");
   revalidatePath("/my-items");
+  return data.id;
 }
 
 export async function updateScopeItem(id: string, input: ScopeItemInput) {
@@ -59,7 +67,8 @@ export async function updateScopeItem(id: string, input: ScopeItemInput) {
     .eq("id", id);
 
   if (error) throw new Error(friendlyError(error.message));
-  revalidatePath("/scope");
+  revalidatePath("/");
+  revalidatePath(`/scope/${id}`);
   revalidatePath("/my-items");
 }
 
@@ -68,6 +77,6 @@ export async function deleteScopeItem(id: string) {
   const { error } = await supabase.from("scope_items").delete().eq("id", id);
 
   if (error) throw new Error(error.message);
-  revalidatePath("/scope");
+  revalidatePath("/");
   revalidatePath("/my-items");
 }

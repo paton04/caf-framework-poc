@@ -6,7 +6,6 @@ import type { UserRole } from "@/lib/caf-data/types";
 
 const INTERNAL_NAV = [
   { href: "/", label: "Overview" },
-  { href: "/scope", label: "Scope Register" },
   { href: "/evidence", label: "Evidence Library" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/my-items", label: "My Items" },

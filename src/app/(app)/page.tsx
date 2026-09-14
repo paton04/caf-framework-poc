@@ -1,14 +1,15 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { ScopeItemList } from "@/components/ScopeItemList";
 import { SupplierIgpList } from "@/components/SupplierIgpList";
-import { getScopeItems, getSupplierIgps } from "@/lib/caf-data/queries";
+import { getInternalUsers, getScopeItems, getSupplierIgps } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 
-// Entry point per the scope-item-first restructure: pick a scope item,
-// then work through its own full CAF assessment. Replaces the old
-// org-wide heatmap — a single indicator no longer has one status once
-// it's scope-item-specific, so there's no single "overview" state to show.
+// Entry point per the scope-item-first restructure: pick a scope item —
+// or add a new one — then everything else (its own details, its CAF
+// assessment) happens on its own /scope/[id] page from there. This is
+// the only place scope items are listed; the standalone Scope Register
+// page is gone, it was pure duplication of this list.
 export default async function OverviewPage() {
   const { user, role } = await getSessionAndRole();
   if (!user) redirect("/login");
@@ -39,7 +40,11 @@ export default async function OverviewPage() {
     );
   }
 
-  const scopeItems = await getScopeItems(await createClient());
+  const supabase = await createClient();
+  const [scopeItems, internalUsers] = await Promise.all([
+    getScopeItems(supabase),
+    getInternalUsers(supabase),
+  ]);
 
   return (
     <>
@@ -47,45 +52,8 @@ export default async function OverviewPage() {
       <p className="page-sub">
         Pick a scope item to work through its CAF assessment — every
         indicator, justified and evidenced for that item specifically.
-        Manage scope item details on the{" "}
-        <Link href="/scope">Scope Register</Link>.
       </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Essential function</th>
-            <th>Criticality</th>
-          </tr>
-        </thead>
-        <tbody>
-          {scopeItems.length === 0 && (
-            <tr>
-              <td colSpan={4}>
-                No scope items yet — add one on the{" "}
-                <Link href="/scope">Scope Register</Link>.
-              </td>
-            </tr>
-          )}
-          {scopeItems.map((item) => (
-            <tr key={item.id}>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>{item.name}</Link>
-              </td>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>{item.type}</Link>
-              </td>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>{item.essentialFunction}</Link>
-              </td>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>{item.criticality}</Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ScopeItemList items={scopeItems} internalUsers={internalUsers} />
     </>
   );
 }

@@ -18,9 +18,9 @@ export default async function MyItemsPage() {
       <h1 className="page-title">My items</h1>
       <p className="page-sub">
         Indicators and scope items linked to your account specifically —
-        not just assigned by name. Link an indicator to your account from
-        its side panel on a scope item&apos;s assessment page, or a scope
-        item from its edit panel on the Scope Register.
+        not just assigned by name. Link either one to your account from
+        its own page — an indicator&apos;s side panel, or a scope
+        item&apos;s &quot;Edit details&quot;.
       </p>
 
       <h2 className="page-title" style={{ fontSize: 16 }}>

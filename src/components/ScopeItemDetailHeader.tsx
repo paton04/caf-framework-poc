@@ -45,27 +45,39 @@ export function ScopeItemDetailHeader({
 
   return (
     <>
-      <h1 className="page-title">{scopeItem.name}</h1>
-      {scopeItem.description && (
-        <p className="page-sub" style={{ marginBottom: 6 }}>
-          {scopeItem.description}
-        </p>
-      )}
-      <p className="page-sub">
-        {scopeItem.type} — {scopeItem.essentialFunction || "no essential function set"} —{" "}
-        {scopeItem.criticality}. Click any indicator to justify it for this
-        scope item specifically, and attach its evidence.{" "}
+      <div className="page-header-row">
+        <div>
+          <h1 className="page-title">{scopeItem.name}</h1>
+          {scopeItem.description && (
+            <p className="page-description">{scopeItem.description}</p>
+          )}
+        </div>
         <button
           type="button"
-          className="link-btn"
-          style={{ padding: 0, textDecoration: "underline" }}
+          className="btn-secondary"
           onClick={() => {
             setError(null);
             setEditing(true);
           }}
         >
-          Edit details
+          Edit scope details
         </button>
+      </div>
+
+      <div className="meta-row">
+        <span className="meta-pill">{scopeItem.type}</span>
+        <span className="meta-pill">
+          {scopeItem.essentialFunction || "No essential function set"}
+        </span>
+        <span className="meta-pill">{scopeItem.criticality}</span>
+        <span className="meta-pill">
+          Owner: {scopeItem.ownerEmail || scopeItem.owner || "Unassigned"}
+        </span>
+      </div>
+
+      <p className="page-sub">
+        Click any indicator below to justify it for this scope item
+        specifically, and attach its evidence.
       </p>
 
       <ScopeItemPanel

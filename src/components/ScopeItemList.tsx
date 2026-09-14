@@ -56,12 +56,13 @@ export function ScopeItemList({
             <th>Type</th>
             <th>Essential function</th>
             <th>Criticality</th>
+            <th>Owner</th>
           </tr>
         </thead>
         <tbody>
           {items.length === 0 && (
             <tr>
-              <td colSpan={4}>No scope items yet — add one above.</td>
+              <td colSpan={5}>No scope items yet — add one above.</td>
             </tr>
           )}
           {items.map((item) => (
@@ -84,6 +85,13 @@ export function ScopeItemList({
               </td>
               <td className="row-link-cell">
                 <Link href={`/scope/${item.id}`}>{item.criticality}</Link>
+              </td>
+              <td className="row-link-cell">
+                <Link href={`/scope/${item.id}`}>
+                  {item.ownerEmail || item.owner || (
+                    <span style={{ color: "var(--ink-soft)" }}>Unassigned</span>
+                  )}
+                </Link>
               </td>
             </tr>
           ))}

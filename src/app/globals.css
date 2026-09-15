@@ -166,6 +166,27 @@ button {
   font-size: 13px;
 }
 
+.notification-strip {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--rule);
+}
+.notification-item {
+  background: var(--partial-bg);
+  color: var(--partial);
+  padding: 8px 28px;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+  border-top: 1px solid var(--rule);
+}
+.notification-item:first-child {
+  border-top: none;
+}
+.notification-item:hover {
+  text-decoration: underline;
+}
+
 .content {
   padding: 28px;
   flex: 1;

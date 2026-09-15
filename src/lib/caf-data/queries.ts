@@ -4,6 +4,7 @@ import type {
   EvidenceFile,
   EvidenceLibraryRow,
   Igp,
+  Notification,
   ProfileWithRole,
   ScopeItem,
   ScopeItemAssessment,
@@ -543,6 +544,86 @@ export async function getSnapshotDetail(
     frozenByEmail: row.frozen_by ? (emailById.get(row.frozen_by) ?? null) : null,
     data: row.data as SnapshotData,
   };
+}
+
+/**
+ * Personal, role-relevant notifications for the signed-in user — surfaced
+ * on login, no email infra involved. Always computed live from current
+ * data rather than stored/dismissed, same spirit as the progress strip.
+ */
+export async function getNotifications(
+  supabase: SupabaseClient,
+  userId: string,
+  role: UserRole
+): Promise<Notification[]> {
+  const notifications: Notification[] = [];
+
+  if (role === "grc") {
+    const { count } = await supabase
+      .from("evidence_files")
+      .select("id", { count: "exact", head: true })
+      .eq("review_status", "pending");
+    if (count) {
+      notifications.push({
+        id: "pending-review",
+        message: `${count} evidence item${count === 1 ? "" : "s"} awaiting your review`,
+        href: "/evidence",
+      });
+    }
+    return notifications;
+  }
+
+  const { count: rejectedCount } = await supabase
+    .from("evidence_files")
+    .select("id", { count: "exact", head: true })
+    .eq("uploaded_by", userId)
+    .eq("review_status", "rejected");
+  if (rejectedCount) {
+    notifications.push({
+      id: "rejected-evidence",
+      message: `${rejectedCount} of your evidence submission${rejectedCount === 1 ? "" : "s"} ${
+        rejectedCount === 1 ? "was" : "were"
+      } rejected`,
+      // Suppliers have no Evidence Library page — their own submissions
+      // and review status already show on their own indicators list.
+      href: role === "supplier" ? "/" : "/evidence",
+    });
+  }
+
+  if (role === "owner_admin" || role === "contributor") {
+    const { data: owned } = await supabase
+      .from("igp_assessments")
+      .select("scope_item_id, igp_code")
+      .eq("owner_id", userId)
+      .neq("status", "not_applicable");
+
+    if (owned && owned.length > 0) {
+      const scopeItemIds = [...new Set(owned.map((o) => o.scope_item_id))];
+      const { data: evidenceRows } = await supabase
+        .from("evidence_files")
+        .select("scope_item_id, igp_code")
+        .in("scope_item_id", scopeItemIds);
+
+      const withEvidence = new Set(
+        (evidenceRows ?? []).map((e) => `${e.scope_item_id}:${e.igp_code}`)
+      );
+      const missingCount = owned.filter(
+        (o) => !withEvidence.has(`${o.scope_item_id}:${o.igp_code}`)
+      ).length;
+
+      if (missingCount > 0) {
+        notifications.push({
+          id: "missing-evidence",
+          message: `${missingCount} of your item${missingCount === 1 ? "" : "s"} ${
+            missingCount === 1 ? "has" : "have"
+          } no evidence yet`,
+          href: "/my-items",
+        });
+      }
+    }
+  }
+
+  return notifications;
 }
 
 /** The current announcement text, or null if none is set. Readable by any

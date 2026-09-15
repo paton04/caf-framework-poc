@@ -130,6 +130,14 @@ export interface SupplierRow {
   igpCodes: string[];
 }
 
+// A personal, role-relevant call to action shown on login — always
+// computed live from current data, never stored/dismissed.
+export interface Notification {
+  id: string;
+  message: string;
+  href: string;
+}
+
 export interface AuditLogEntry {
   id: string;
   actorEmail: string | null;

@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
 import { signOut } from "@/app/actions/auth";
 import { getSessionAndRole } from "@/lib/auth";
-import { getAnnouncement } from "@/lib/caf-data/queries";
+import { getAnnouncement, getNotifications } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -13,7 +14,9 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default async function AppShellLayout({ children }: { children: React.ReactNode }) {
   const { user, role } = await getSessionAndRole();
-  const announcement = user ? await getAnnouncement(await createClient()) : null;
+  const supabase = user ? await createClient() : null;
+  const announcement = supabase ? await getAnnouncement(supabase) : null;
+  const notifications = supabase && user && role ? await getNotifications(supabase, user.id, role) : [];
 
   return (
     <div className="shell">
@@ -35,6 +38,15 @@ export default async function AppShellLayout({ children }: { children: React.Rea
           </div>
         </div>
         {announcement && <div className="announcement-banner">{announcement}</div>}
+        {notifications.length > 0 && (
+          <div className="notification-strip">
+            {notifications.map((n) => (
+              <Link key={n.id} href={n.href} className="notification-item">
+                {n.message}
+              </Link>
+            ))}
+          </div>
+        )}
         <div className="content">{children}</div>
       </div>
     </div>

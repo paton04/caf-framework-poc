@@ -7,6 +7,7 @@ import type {
   ProfileWithRole,
   ScopeItem,
   ScopeItemAssessment,
+  ScopeItemProgress,
   Section,
   SnapshotData,
   SnapshotDetail,
@@ -284,6 +285,43 @@ export async function getScopeItems(supabase: SupabaseClient): Promise<ScopeItem
     ownerId: row.owner_id,
     ownerEmail: row.owner_id ? (ownerEmailById.get(row.owner_id) ?? null) : null,
   }));
+}
+
+/**
+ * Achieved/partial/not/not-started/not-applicable counts per scope item,
+ * for the quick-glance summary on the scope items list — two queries
+ * total rather than a full getScopeItemAssessment per item. An indicator
+ * with no igp_assessments row (or an explicit 'none' row) both count as
+ * "not started", same as the default in getScopeItemAssessment.
+ */
+export async function getScopeItemProgress(
+  supabase: SupabaseClient,
+  scopeItemIds: string[]
+): Promise<Map<string, ScopeItemProgress>> {
+  const progressByScopeItem = new Map<string, ScopeItemProgress>(
+    scopeItemIds.map((id) => [id, { achieved: 0, partial: 0, not: 0, none: 0, notApplicable: 0 }])
+  );
+  if (scopeItemIds.length === 0) return progressByScopeItem;
+
+  const [{ count: totalIgps }, { data: rows }] = await Promise.all([
+    supabase.from("caf_igps").select("code", { count: "exact", head: true }),
+    supabase.from("igp_assessments").select("scope_item_id, status").in("scope_item_id", scopeItemIds),
+  ]);
+
+  for (const row of rows ?? []) {
+    const entry = progressByScopeItem.get(row.scope_item_id);
+    if (!entry) continue;
+    if (row.status === "achieved") entry.achieved++;
+    else if (row.status === "partial") entry.partial++;
+    else if (row.status === "not") entry.not++;
+    else if (row.status === "not_applicable") entry.notApplicable++;
+  }
+
+  for (const entry of progressByScopeItem.values()) {
+    entry.none = (totalIgps ?? 0) - entry.achieved - entry.partial - entry.not - entry.notApplicable;
+  }
+
+  return progressByScopeItem;
 }
 
 export async function getEvidenceLibrary(

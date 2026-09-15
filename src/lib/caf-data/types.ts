@@ -92,6 +92,17 @@ export interface ScopeItem {
   ownerEmail: string | null;
 }
 
+// Per-scope-item indicator counts for the scope items list — how far
+// along that item's assessment is, without fetching its full set of
+// sections/indicators/evidence just to count statuses.
+export interface ScopeItemProgress {
+  achieved: number;
+  partial: number;
+  not: number;
+  none: number;
+  notApplicable: number;
+}
+
 export interface EvidenceLibraryRow {
   id: string;
   file: string;

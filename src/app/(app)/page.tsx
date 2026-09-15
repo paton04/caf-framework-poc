@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { ScopeItemList } from "@/components/ScopeItemList";
 import { SupplierIgpList } from "@/components/SupplierIgpList";
-import { getInternalUsers, getScopeItems, getSupplierIgps } from "@/lib/caf-data/queries";
+import {
+  getInternalUsers,
+  getScopeItemProgress,
+  getScopeItems,
+  getSupplierIgps,
+} from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 
@@ -47,6 +52,10 @@ export default async function ScopeItemsPage() {
     getScopeItems(supabase),
     getInternalUsers(supabase),
   ]);
+  const progress = await getScopeItemProgress(
+    supabase,
+    scopeItems.map((s) => s.id)
+  );
 
   return (
     <>
@@ -55,7 +64,11 @@ export default async function ScopeItemsPage() {
         Pick a scope item to work through its CAF assessment — every
         indicator, justified and evidenced for that item specifically.
       </p>
-      <ScopeItemList items={scopeItems} internalUsers={internalUsers} />
+      <ScopeItemList
+        items={scopeItems}
+        internalUsers={internalUsers}
+        progress={Object.fromEntries(progress)}
+      />
     </>
   );
 }

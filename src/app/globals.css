@@ -172,19 +172,43 @@ button {
   border-bottom: 1px solid var(--rule);
 }
 .notification-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   background: var(--partial-bg);
-  color: var(--partial);
   padding: 8px 28px;
   font-size: 12.5px;
   font-weight: 500;
-  text-decoration: none;
   border-top: 1px solid var(--rule);
 }
 .notification-item:first-child {
   border-top: none;
 }
-.notification-item:hover {
+.notification-item a {
+  color: var(--partial);
+  text-decoration: none;
+}
+.notification-item a:hover {
   text-decoration: underline;
+}
+.notification-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--partial);
+  color: var(--partial);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.notification-dismiss:hover:not(:disabled) {
+  background: var(--partial);
+  color: var(--accent-ink);
+}
+.notification-dismiss:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .content {

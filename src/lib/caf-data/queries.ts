@@ -548,8 +548,10 @@ export async function getSnapshotDetail(
 
 /**
  * Personal, role-relevant notifications for the signed-in user — surfaced
- * on login, no email infra involved. Always computed live from current
- * data rather than stored/dismissed, same spirit as the progress strip.
+ * on login, no email infra involved. Computed live from current data each
+ * time, then a dismissal is suppressed only while its count hasn't moved
+ * since (see notification_dismissals) — dismissing can't permanently hide
+ * a compliance gap that's still open.
  */
 export async function getNotifications(
   supabase: SupabaseClient,
@@ -568,9 +570,10 @@ export async function getNotifications(
         id: "pending-review",
         message: `${count} evidence item${count === 1 ? "" : "s"} awaiting your review`,
         href: "/evidence",
+        count,
       });
     }
-    return notifications;
+    return filterDismissed(supabase, userId, notifications);
   }
 
   const { count: rejectedCount } = await supabase
@@ -587,6 +590,7 @@ export async function getNotifications(
       // Suppliers have no Evidence Library page — their own submissions
       // and review status already show on their own indicators list.
       href: role === "supplier" ? "/" : "/evidence",
+      count: rejectedCount,
     });
   }
 
@@ -618,12 +622,35 @@ export async function getNotifications(
             missingCount === 1 ? "has" : "have"
           } no evidence yet`,
           href: "/my-items",
+          count: missingCount,
         });
       }
     }
   }
 
-  return notifications;
+  return filterDismissed(supabase, userId, notifications);
+}
+
+/** Drops any notification whose count matches what the user already
+ * dismissed it at — a changed count means it's a new instance of the
+ * same issue, so it reappears. */
+async function filterDismissed(
+  supabase: SupabaseClient,
+  userId: string,
+  notifications: Notification[]
+): Promise<Notification[]> {
+  if (notifications.length === 0) return notifications;
+
+  const { data: dismissals } = await supabase
+    .from("notification_dismissals")
+    .select("notification_id, dismissed_count")
+    .eq("user_id", userId);
+
+  const dismissedCountById = new Map(
+    (dismissals ?? []).map((d) => [d.notification_id, d.dismissed_count])
+  );
+
+  return notifications.filter((n) => dismissedCountById.get(n.id) !== n.count);
 }
 
 /** The current announcement text, or null if none is set. Readable by any

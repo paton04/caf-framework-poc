@@ -130,12 +130,15 @@ export interface SupplierRow {
   igpCodes: string[];
 }
 
-// A personal, role-relevant call to action shown on login — always
-// computed live from current data, never stored/dismissed.
+// A personal, role-relevant call to action shown on login — computed live
+// from current data each time. `count` is what it was dismissed at (see
+// notification_dismissals): if the underlying count changes, it reappears
+// even if previously acknowledged.
 export interface Notification {
   id: string;
   message: string;
   href: string;
+  count: number;
 }
 
 export interface AuditLogEntry {

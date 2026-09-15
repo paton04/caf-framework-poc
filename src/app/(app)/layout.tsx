@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
+import { NotificationStrip } from "@/components/NotificationStrip";
 import { signOut } from "@/app/actions/auth";
 import { getSessionAndRole } from "@/lib/auth";
 import { getAnnouncement, getNotifications } from "@/lib/caf-data/queries";
@@ -38,15 +38,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
           </div>
         </div>
         {announcement && <div className="announcement-banner">{announcement}</div>}
-        {notifications.length > 0 && (
-          <div className="notification-strip">
-            {notifications.map((n) => (
-              <Link key={n.id} href={n.href} className="notification-item">
-                {n.message}
-              </Link>
-            ))}
-          </div>
-        )}
+        {notifications.length > 0 && <NotificationStrip notifications={notifications} />}
         <div className="content">{children}</div>
       </div>
     </div>

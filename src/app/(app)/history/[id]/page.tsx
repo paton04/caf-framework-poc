@@ -56,11 +56,19 @@ export default async function SnapshotDetailPage({
         </tbody>
       </table>
 
-      {snapshot.data.assessments.map(({ scopeItem, sections }) => (
+      {snapshot.data.assessments.map(({ scopeItem, sections, generalEvidence }) => (
         <div key={scopeItem.id} style={{ marginBottom: 32 }}>
           <h2 className="page-title" style={{ fontSize: 16 }}>
             {scopeItem.name}
           </h2>
+          {generalEvidence.length > 0 && (
+            <p className="page-sub" style={{ margin: "0 0 12px 0" }}>
+              General evidence:{" "}
+              {generalEvidence
+                .map((f) => `${f.name} — ${f.description ?? "—"} (${reviewStatusLabel[f.reviewStatus]})`)
+                .join("; ")}
+            </p>
+          )}
           {sections.map((sec) => (
             <div key={sec.code} style={{ marginBottom: 16 }}>
               <p className="page-sub" style={{ margin: "0 0 6px 0" }}>

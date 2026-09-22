@@ -37,7 +37,8 @@ function formatDateTime(iso: string): string {
 
 interface EvidenceRow {
   id: string;
-  igp_code: string;
+  // Null for general scope-item evidence — see 0014_general_scope_evidence.sql.
+  igp_code: string | null;
   scope_item_id: string | null;
   file_name: string;
   storage_path: string;
@@ -48,10 +49,11 @@ interface EvidenceRow {
   reviewed_by: string | null;
   reviewed_at: string | null;
   expiry_date: string | null;
+  description: string;
 }
 
 const EVIDENCE_COLUMNS =
-  "id, igp_code, scope_item_id, file_name, storage_path, uploaded_at, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, expiry_date";
+  "id, igp_code, scope_item_id, file_name, storage_path, uploaded_at, uploaded_by, review_status, review_note, reviewed_by, reviewed_at, expiry_date, description";
 
 /** Emails for a set of user ids, keyed by id — skips ids that are null/absent. */
 async function getEmailsByUserId(
@@ -89,6 +91,7 @@ function mapEvidenceRow(row: EvidenceRow, emailById: Map<string, string>): Evide
     reviewedByEmail: row.reviewed_by ? (emailById.get(row.reviewed_by) ?? null) : null,
     reviewedAt: row.reviewed_at ? formatDate(row.reviewed_at) : null,
     expiryDate: row.expiry_date,
+    description: row.description || null,
   };
 }
 
@@ -154,10 +157,16 @@ export async function getScopeItemAssessment(
   const evidenceRows = (evidenceRes.data ?? []) as EvidenceRow[];
   const evidenceEmailById = await getEmailsByUserId(supabase, evidenceEmailIds(evidenceRows));
   const evidenceByIgp = new Map<string, EvidenceFile[]>();
+  const generalEvidence: EvidenceFile[] = [];
   for (const row of evidenceRows) {
-    const list = evidenceByIgp.get(row.igp_code) ?? [];
-    list.push(mapEvidenceRow(row, evidenceEmailById));
-    evidenceByIgp.set(row.igp_code, list);
+    const file = mapEvidenceRow(row, evidenceEmailById);
+    if (row.igp_code) {
+      const list = evidenceByIgp.get(row.igp_code) ?? [];
+      list.push(file);
+      evidenceByIgp.set(row.igp_code, list);
+    } else {
+      generalEvidence.push(file);
+    }
   }
 
   const sections: Section[] = (sectionsRes.data ?? []).map((sec) => ({
@@ -195,7 +204,7 @@ export async function getScopeItemAssessment(
     ownerEmail: sir.owner_id ? (ownerEmailById.get(sir.owner_id) ?? null) : null,
   };
 
-  return { scopeItem, sections };
+  return { scopeItem, sections, generalEvidence };
 }
 
 /** Every scope item's full assessment — used only for freezing a snapshot. */
@@ -242,6 +251,10 @@ export async function getSupplierIgps(
   const evidenceEmailById = await getEmailsByUserId(supabase, evidenceEmailIds(evidenceRows));
   const evidenceByIgp = new Map<string, EvidenceFile[]>();
   for (const row of evidenceRows) {
+    // The query above is already scoped to igpCodes, so igp_code is never
+    // null here — general scope evidence is an internal-roles concept,
+    // suppliers never upload it.
+    if (!row.igp_code) continue;
     const list = evidenceByIgp.get(row.igp_code) ?? [];
     list.push(mapEvidenceRow(row, evidenceEmailById));
     evidenceByIgp.set(row.igp_code, list);
@@ -346,6 +359,7 @@ export async function getEvidenceLibrary(
       id: evidence.id,
       file: evidence.name,
       linkedIgp: row.igp_code,
+      description: evidence.description,
       scopeItemName: row.scope_item_id ? (scopeItemNameById.get(row.scope_item_id) ?? null) : null,
       uploaded: evidence.date,
       uploadedByEmail: evidence.uploadedByEmail,

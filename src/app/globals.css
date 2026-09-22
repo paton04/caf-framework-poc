@@ -616,6 +616,26 @@ button {
   color: var(--ink);
   border-color: var(--ink-soft);
 }
+
+.general-evidence {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.general-evidence .evidence-item {
+  align-items: flex-start;
+  gap: 12px;
+}
+.general-evidence .evidence-item > div:first-child {
+  flex: 1;
+}
+.general-evidence .evidence-item .fname {
+  display: block;
+}
+.general-evidence .evidence-item .fmeta {
+  margin-top: 2px;
+}
 .overlay-foot {
   padding: 16px 24px;
   border-top: 1px solid var(--rule);

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { Heatmap } from "@/components/Heatmap";
 import { ScopeItemDetailHeader } from "@/components/ScopeItemDetailHeader";
+import { GeneralEvidence } from "@/components/GeneralEvidence";
 import { getInternalUsers, getScopeItemAssessment } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
@@ -22,11 +23,12 @@ export default async function ScopeItemAssessmentPage({
 
   if (!assessment) notFound();
 
-  const { scopeItem, sections } = assessment;
+  const { scopeItem, sections, generalEvidence } = assessment;
 
   return (
     <>
       <ScopeItemDetailHeader scopeItem={scopeItem} internalUsers={internalUsers} />
+      <GeneralEvidence scopeItemId={scopeItem.id} evidence={generalEvidence} />
       <Heatmap scopeItemId={scopeItem.id} sections={sections} internalUsers={internalUsers} />
     </>
   );

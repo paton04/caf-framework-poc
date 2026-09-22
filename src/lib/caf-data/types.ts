@@ -53,6 +53,9 @@ export interface EvidenceFile {
   reviewedByEmail: string | null;
   reviewedAt: string | null; // display string
   expiryDate: string | null; // display string
+  // Set (and required) for general scope-item evidence, which has no
+  // indicator name to identify it by. Empty/absent for indicator evidence.
+  description: string | null;
 }
 
 export interface Igp {
@@ -106,7 +109,9 @@ export interface ScopeItemProgress {
 export interface EvidenceLibraryRow {
   id: string;
   file: string;
-  linkedIgp: string;
+  // Null for general scope-item evidence (not tied to one indicator).
+  linkedIgp: string | null;
+  description: string | null;
   scopeItemName: string | null;
   uploaded: string;
   uploadedByEmail: string | null;
@@ -119,9 +124,12 @@ export interface EvidenceLibraryRow {
 
 // One scope item's full CAF assessment — the unit of work in the
 // drill-down view (Overview -> a scope item -> its own heatmap).
+// generalEvidence is evidence about the scope item as a whole (e.g. a
+// network diagram) rather than any one indicator specifically.
 export interface ScopeItemAssessment {
   scopeItem: ScopeItem;
   sections: Section[];
+  generalEvidence: EvidenceFile[];
 }
 
 export interface SupplierRow {

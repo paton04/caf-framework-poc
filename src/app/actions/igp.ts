@@ -67,3 +67,40 @@ export async function addEvidence(
   revalidatePath("/evidence");
   if (scopeItemId) revalidatePath(`/scope/${scopeItemId}`);
 }
+
+// Evidence about a scope item as a whole (e.g. a network diagram, an
+// asset register extract) rather than proof of one specific CAF
+// indicator — igp_code is left null. A description is required since
+// there's no indicator name to identify the file by otherwise (see
+// 0014_general_scope_evidence.sql for the DB-level check enforcing this).
+export async function addGeneralEvidence(scopeItemId: string, formData: FormData) {
+  const file = formData.get("file");
+  const description = (formData.get("description") as string | null)?.trim() ?? "";
+
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("No file selected.");
+  }
+  if (!description) {
+    throw new Error("Add a description explaining what this evidence is.");
+  }
+
+  const supabase = await createClient();
+  const storagePath = `general/${scopeItemId}/${Date.now()}-${file.name}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("evidence")
+    .upload(storagePath, file);
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { error: insertError } = await supabase.from("evidence_files").insert({
+    igp_code: null,
+    scope_item_id: scopeItemId,
+    file_name: file.name,
+    storage_path: storagePath,
+    description,
+  });
+  if (insertError) throw new Error(insertError.message);
+
+  revalidatePath("/evidence");
+  revalidatePath(`/scope/${scopeItemId}`);
+}

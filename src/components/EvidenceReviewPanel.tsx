@@ -60,7 +60,7 @@ export function EvidenceReviewPanel({
               <button className="overlay-close" onClick={onClose} aria-label="Close">
                 ✕
               </button>
-              <div className="pid mono">{row.linkedIgp}</div>
+              <div className="pid mono">{row.linkedIgp ?? "General"}</div>
               <h3>{row.file}</h3>
             </div>
             <div className="overlay-body">
@@ -70,6 +70,13 @@ export function EvidenceReviewPanel({
                 <div className="field">
                   <label>Scope item</label>
                   <div className="fmeta">{row.scopeItemName}</div>
+                </div>
+              )}
+
+              {row.description && (
+                <div className="field">
+                  <label>Description</label>
+                  <div className="fmeta">{row.description}</div>
                 </div>
               )}
 

@@ -76,7 +76,7 @@ export function EvidenceLibrary({
             <tr key={row.id} style={{ cursor: "pointer" }} onClick={() => open(row)}>
               <td>{row.file}</td>
               <td>{row.scopeItemName ?? "—"}</td>
-              <td className="mono">{row.linkedIgp}</td>
+              <td className="mono">{row.linkedIgp ?? "General"}</td>
               <td>{row.uploaded}</td>
               <td>
                 <span className={`status ${reviewStatusClass[row.reviewStatus]}`}>

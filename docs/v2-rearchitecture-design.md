@@ -348,3 +348,13 @@ migration (tables, columns, empty) 2) expand/correct the 42-outcome
 catalogue 3) populate Section B's statement text as a pilot 4) build
 the statement-checklist UI against that one section 5) extend content
 + UI to the rest once the pattern's proven.
+
+**Progress:** 1 and 2 are written (`0015_igp_statements.sql`,
+`0016_igp_outcome_catalogue.sql`), not yet run against the live
+database. 3 is also written (`0017_section_b_statements.sql`) — all 160
+real statements for Section B's 20 outcomes, transcribed and verified
+against the Ofgem Overlay PDF directly (see that migration's header
+comment for the extraction/verification method — worth reading before
+attempting to automate extraction of the other sections, since the
+naive column-crop approach repeatedly produced scrambled text on this
+document's layout). Steps 4-5 (UI) not started.

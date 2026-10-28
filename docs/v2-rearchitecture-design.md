@@ -62,8 +62,6 @@ contributing outcomes. This is additive + corrective, same table:
   to "real outcome name" (e.g. `B2.a` from "Identity and access
   management" to "Identity Verification, Authentication and
   Authorisation").
-- `A4.b Secure Software Development and Support` is also missing —
-  A4 currently has only A4.a seeded, but the real catalogue has two.
 
 New columns on `caf_igps`:
 

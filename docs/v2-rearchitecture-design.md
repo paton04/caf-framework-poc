@@ -250,10 +250,56 @@ create table public.statement_comments (
 );
 ```
 
-Simple append-only thread, no edit/delete (consistent with
-`audit_log`/`cycle_snapshots`'s append-only philosophy elsewhere in this
-schema). RLS: owner_admin/contributor/grc read+insert; suppliers
-excluded (statements aren't supplier-facing yet, matching
+This is already a full conversation thread as it stands — nothing
+limits a statement to one comment, it's an unbounded, ordered
+(`created_at`) list, and `author_id` already identifies who said what.
+What it doesn't have yet is **@mentions**:
+
+```sql
+create table public.statement_comment_mentions (
+  comment_id uuid not null references public.statement_comments (id) on delete cascade,
+  mentioned_user_id uuid not null references auth.users (id) on delete cascade,
+  primary key (comment_id, mentioned_user_id)
+);
+```
+
+**How mentions actually get resolved**: the composer UI drives an
+`@`-triggered picker (like Jira/Slack) backed by the list of internal
+users — `owner_admin`/`contributor`/`grc` can already all read every
+profile (0003 + 0012's existing policies), so no new RLS is needed just
+to populate the picker. When someone's picked, the UI inserts readable
+text into the comment body (`@Jane Smith`) *and* records their user ID
+alongside it; on submit, the app writes the body as plain text and the
+picked IDs into `statement_comment_mentions`. This is the same
+two-part pattern Jira/Slack/GitHub all use under the hood — the body
+stays plain, readable text (degrades gracefully even without any
+special rendering), the mention *relationship* is a separate structured
+fact. Only internal-role users are mentionable, matching who can see
+the thread at all — suppliers aren't part of this conversation space
+yet, same as the rest of this layer.
+
+**Notifications** — reuses the existing notification mechanism (the
+`Notification` type, computed live, dismissible via
+`notification_dismissals`) rather than inventing a second one: a new
+notification row type ("X mentioned you on \<outcome\>") computed from
+`statement_comment_mentions` where `mentioned_user_id = auth.uid()`,
+same shape as every other notification already on login. This is
+genuinely small given that infrastructure already exists.
+
+**Edit/delete — deliberately not included, flagging it as a call to
+confirm.** Jira/Slack/social platforms all let you edit or delete your
+own comment; this design proposes append-only instead, matching
+`audit_log`/`cycle_snapshots`'s philosophy elsewhere in this schema —
+and arguably a *feature* here specifically, not a gap: in a compliance
+tool, an evidence discussion nobody can quietly edit after the fact is
+easier to defend to a regulator than one that can. If you want edit
+support anyway, it's a small addition (an `edited_at` column + an
+"author can update their own row" RLS policy) — just say so; I didn't
+want to assume silently either way since it's a real behaviour choice,
+not just a schema detail.
+
+RLS: owner_admin/contributor/grc read+insert on both new tables;
+suppliers excluded (statements aren't supplier-facing yet, matching
 `igp_assessments` today).
 
 **Reporting** — out of scope for this schema pass. Once statements,

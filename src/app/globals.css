@@ -657,6 +657,128 @@ button {
   color: var(--ink-soft);
 }
 
+/* STATEMENT CHECKLIST (sub-checks under an outcome) */
+.statement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--rule);
+  background: var(--rule);
+}
+.statement-group-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  background: #f5f6f3;
+  padding: 6px 10px;
+}
+.statement-row {
+  background: var(--panel);
+}
+.statement-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  font-size: 12.5px;
+}
+.statement-row-head:hover {
+  background: #fafaf8;
+}
+.statement-row.expanded .statement-row-head {
+  background: #f5f6f3;
+}
+.statement-num {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+  font-size: 11px;
+  width: 18px;
+}
+.statement-text {
+  flex: 1;
+}
+.enterprise-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-family: var(--font-plex-mono), monospace;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.statement-row-body {
+  padding: 14px 16px 16px 40px;
+  border-top: 1px solid var(--rule);
+}
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.checkbox-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+}
+.comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.comment {
+  border-left: 2px solid var(--rule-strong);
+  padding: 4px 0 4px 10px;
+}
+.comment-meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 2px;
+}
+.comment-author {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.comment-body {
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.mention-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.mention-chip {
+  font-size: 11px;
+  font-family: var(--font-plex-mono), monospace;
+  border: 1px solid var(--rule-strong);
+  background: none;
+  color: var(--ink-soft);
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.mention-chip.sel {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 /* TABLES */
 table {
   width: 100%;

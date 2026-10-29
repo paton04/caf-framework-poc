@@ -4,6 +4,7 @@ import type {
   EvidenceFile,
   EvidenceLibraryRow,
   Igp,
+  IgpStatement,
   Notification,
   ProfileWithRole,
   ScopeItem,
@@ -13,6 +14,8 @@ import type {
   SnapshotData,
   SnapshotDetail,
   SnapshotSummary,
+  StatementComment,
+  StatementStatus,
   SupplierRow,
   UserRole,
 } from "./types";
@@ -112,6 +115,170 @@ export async function getCurrentUserRole(
   return (data?.role as UserRole | undefined) ?? null;
 }
 
+interface StatementRow {
+  id: string;
+  igp_code: string;
+  statement_number: number;
+  level: "partially_achieved" | "achieved";
+  statement: string;
+  sort_order: number;
+}
+
+interface StatementAssessmentRow {
+  id: string;
+  statement_id: string;
+  scope_item_id: string | null;
+  status: StatementStatus;
+  note: string;
+  reviewed_by: string | null;
+  updated_at: string;
+}
+
+interface StatementCommentRow {
+  id: string;
+  statement_assessment_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+}
+
+/**
+ * Every caf_igp_statement, each resolved to this scope item's *effective*
+ * status — its own answer if one exists, otherwise the enterprise-wide
+ * (scope_item_id = null) one, otherwise not_reviewed (see
+ * docs/v2-rearchitecture-design.md §3.2) — with its evidence and comment
+ * thread attached, grouped by igp_code. An outcome with no statements
+ * populated yet just gets no entry here, which is what lets its
+ * igp_assessments.status keep being manually set exactly as before.
+ */
+async function getStatementsByIgp(
+  supabase: SupabaseClient,
+  scopeItemId: string
+): Promise<Map<string, IgpStatement[]>> {
+  const [statementsRes, assessmentsRes] = await Promise.all([
+    supabase
+      .from("caf_igp_statements")
+      .select("id, igp_code, statement_number, level, statement, sort_order")
+      .order("sort_order"),
+    supabase
+      .from("igp_statement_assessments")
+      .select("id, statement_id, scope_item_id, status, note, reviewed_by, updated_at")
+      .or(`scope_item_id.eq.${scopeItemId},scope_item_id.is.null`),
+  ]);
+
+  const statements = (statementsRes.data ?? []) as StatementRow[];
+  const assessments = (assessmentsRes.data ?? []) as StatementAssessmentRow[];
+
+  const ownByStatement = new Map<string, StatementAssessmentRow>();
+  const enterpriseByStatement = new Map<string, StatementAssessmentRow>();
+  for (const a of assessments) {
+    if (a.scope_item_id === scopeItemId) ownByStatement.set(a.statement_id, a);
+    else if (a.scope_item_id === null) enterpriseByStatement.set(a.statement_id, a);
+  }
+
+  const resolvedByStatement = new Map<
+    string,
+    { row: StatementAssessmentRow | null; isEnterpriseWide: boolean }
+  >();
+  for (const s of statements) {
+    const own = ownByStatement.get(s.id);
+    const ent = enterpriseByStatement.get(s.id);
+    resolvedByStatement.set(
+      s.id,
+      own ? { row: own, isEnterpriseWide: false } : { row: ent ?? null, isEnterpriseWide: !!ent }
+    );
+  }
+
+  const resolvedAssessmentIds = [...resolvedByStatement.values()]
+    .map((r) => r.row?.id)
+    .filter((id): id is string => !!id);
+
+  const [evidenceRes, commentsRes] = resolvedAssessmentIds.length
+    ? await Promise.all([
+        supabase
+          .from("evidence_files")
+          .select(`${EVIDENCE_COLUMNS}, statement_assessment_id`)
+          .in("statement_assessment_id", resolvedAssessmentIds)
+          .order("uploaded_at", { ascending: false }),
+        supabase
+          .from("statement_comments")
+          .select("id, statement_assessment_id, author_id, body, created_at")
+          .in("statement_assessment_id", resolvedAssessmentIds)
+          .order("created_at"),
+      ])
+    : [{ data: [] as unknown[] }, { data: [] as unknown[] }];
+
+  const evidenceRows = (evidenceRes.data ?? []) as (EvidenceRow & { statement_assessment_id: string })[];
+  const commentRows = (commentsRes.data ?? []) as StatementCommentRow[];
+  const commentIds = commentRows.map((c) => c.id);
+
+  const mentionsRes = commentIds.length
+    ? await supabase
+        .from("statement_comment_mentions")
+        .select("comment_id, mentioned_user_id")
+        .in("comment_id", commentIds)
+    : { data: [] as { comment_id: string; mentioned_user_id: string }[] };
+  const mentionRows = mentionsRes.data ?? [];
+
+  const emailById = await getEmailsByUserId(supabase, [
+    ...evidenceEmailIds(evidenceRows),
+    ...commentRows.map((c) => c.author_id),
+    ...mentionRows.map((m) => m.mentioned_user_id),
+    ...[...resolvedByStatement.values()].map((r) => r.row?.reviewed_by ?? null),
+  ]);
+
+  const evidenceByAssessment = new Map<string, EvidenceFile[]>();
+  for (const row of evidenceRows) {
+    const list = evidenceByAssessment.get(row.statement_assessment_id) ?? [];
+    list.push(mapEvidenceRow(row, emailById));
+    evidenceByAssessment.set(row.statement_assessment_id, list);
+  }
+
+  const mentionsByComment = new Map<string, string[]>();
+  for (const m of mentionRows) {
+    const list = mentionsByComment.get(m.comment_id) ?? [];
+    const email = emailById.get(m.mentioned_user_id);
+    if (email) list.push(email);
+    mentionsByComment.set(m.comment_id, list);
+  }
+
+  const commentsByAssessment = new Map<string, StatementComment[]>();
+  for (const row of commentRows) {
+    const list = commentsByAssessment.get(row.statement_assessment_id) ?? [];
+    list.push({
+      id: row.id,
+      authorEmail: emailById.get(row.author_id) ?? null,
+      body: row.body,
+      createdAt: formatDateTime(row.created_at),
+      mentionedEmails: mentionsByComment.get(row.id) ?? [],
+    });
+    commentsByAssessment.set(row.statement_assessment_id, list);
+  }
+
+  const byIgp = new Map<string, IgpStatement[]>();
+  for (const s of statements) {
+    const resolved = resolvedByStatement.get(s.id)!;
+    const assessmentId = resolved.row?.id ?? null;
+    const list = byIgp.get(s.igp_code) ?? [];
+    list.push({
+      id: s.id,
+      statementNumber: s.statement_number,
+      level: s.level,
+      text: s.statement,
+      status: resolved.row?.status ?? "not_reviewed",
+      note: resolved.row?.note ?? "",
+      isEnterpriseWide: resolved.isEnterpriseWide,
+      reviewedByEmail: resolved.row?.reviewed_by ? (emailById.get(resolved.row.reviewed_by) ?? null) : null,
+      updatedAt: resolved.row?.updated_at ? formatDateTime(resolved.row.updated_at) : null,
+      evidence: assessmentId ? (evidenceByAssessment.get(assessmentId) ?? []) : [],
+      comments: assessmentId ? (commentsByAssessment.get(assessmentId) ?? []) : [],
+    });
+    byIgp.set(s.igp_code, list);
+  }
+
+  return byIgp;
+}
+
 /**
  * One scope item's full CAF assessment — every section/indicator, with
  * that item's own status/narrative/owner and evidence. This is the unit
@@ -123,7 +290,7 @@ export async function getScopeItemAssessment(
   supabase: SupabaseClient,
   scopeItemId: string
 ): Promise<ScopeItemAssessment | null> {
-  const [scopeItemRes, sectionsRes, igpsRes, assessmentsRes, evidenceRes] = await Promise.all([
+  const [scopeItemRes, sectionsRes, igpsRes, assessmentsRes, evidenceRes, statementsByIgp] = await Promise.all([
     supabase
       .from("scope_items")
       .select("id, name, type, description, essential_function, criticality, owner, owner_id")
@@ -143,6 +310,7 @@ export async function getScopeItemAssessment(
       .select(EVIDENCE_COLUMNS)
       .eq("scope_item_id", scopeItemId)
       .order("uploaded_at", { ascending: false }),
+    getStatementsByIgp(supabase, scopeItemId),
   ]);
 
   if (!scopeItemRes.data) return null;
@@ -187,6 +355,7 @@ export async function getScopeItemAssessment(
           guidance: igp.guidance,
           guidanceNote: igp.guidance_note ?? undefined,
           evidence: evidenceByIgp.get(igp.code) ?? [],
+          statements: statementsByIgp.get(igp.code) ?? [],
         };
       }),
   }));
@@ -273,6 +442,9 @@ export async function getSupplierIgps(
     guidance: igp.guidance,
     guidanceNote: igp.guidance_note ?? undefined,
     evidence: evidenceByIgp.get(igp.code) ?? [],
+    // Statement-level sub-checks aren't supplier-facing yet, same as
+    // igp_assessments narrative/owner above.
+    statements: [],
   }));
 }
 
@@ -425,6 +597,19 @@ export async function getInternalUsers(
   const profiles = await getProfilesWithRoles(supabase);
   return profiles
     .filter((p) => p.role === "owner_admin" || p.role === "contributor")
+    .map((p) => ({ id: p.id, email: p.email }));
+}
+
+/** Everyone who can read/post statement comments — owner_admin,
+ * contributor, and grc (unlike getInternalUsers above, grc is included
+ * here since statement_comments' RLS explicitly allows all three — see
+ * 0015_igp_statements.sql). Used for the @mention picker. */
+export async function getCommentableUsers(
+  supabase: SupabaseClient
+): Promise<{ id: string; email: string }[]> {
+  const profiles = await getProfilesWithRoles(supabase);
+  return profiles
+    .filter((p) => p.role === "owner_admin" || p.role === "contributor" || p.role === "grc")
     .map((p) => ({ id: p.id, email: p.email }));
 }
 

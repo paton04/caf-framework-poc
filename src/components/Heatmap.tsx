@@ -24,10 +24,12 @@ export function Heatmap({
   scopeItemId,
   sections,
   internalUsers,
+  commentableUsers,
 }: {
   scopeItemId: string;
   sections: Section[];
   internalUsers: InternalUser[];
+  commentableUsers: InternalUser[];
 }) {
   const router = useRouter();
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -149,9 +151,11 @@ export function Heatmap({
 
       <IgpPanel
         igp={selectedIgp}
+        scopeItemId={scopeItemId}
         open={selectedIgp !== null}
         pending={isPending}
         internalUsers={internalUsers}
+        commentableUsers={commentableUsers}
         onClose={() => setSelection(null)}
         onStatusChange={handleStatusChange}
         onSaveDetails={handleSaveDetails}

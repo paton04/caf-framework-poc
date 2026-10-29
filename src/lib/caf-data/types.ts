@@ -58,6 +58,81 @@ export interface EvidenceFile {
   description: string | null;
 }
 
+// The real numbered IGP statements under an outcome (v2 rearchitecture
+// — see docs/v2-rearchitecture-design.md). Most outcomes don't have
+// these populated yet (only Section B does so far); `statements` is an
+// empty array everywhere else, and the outcome's own status stays
+// manually set until statements exist for it.
+export type StatementLevel = "partially_achieved" | "achieved";
+export type StatementStatus = "not_reviewed" | "yes" | "no" | "no_pending" | "yes_future_phase" | "not_in_scope";
+
+export const statementStatusLabel: Record<StatementStatus, string> = {
+  not_reviewed: "Not reviewed",
+  yes: "YES",
+  no: "NO",
+  no_pending: "NO-100 — review ongoing",
+  yes_future_phase: "YES-P2 — later phase",
+  not_in_scope: "Not in scope",
+};
+
+// Reuses the outcome-level status colours — same visual language, no
+// need for a parallel palette just because the label set differs.
+export const statementStatusClass: Record<StatementStatus, string> = {
+  not_reviewed: "st-none",
+  yes: "st-achieved",
+  no: "st-not",
+  no_pending: "st-partial",
+  yes_future_phase: "st-partial",
+  not_in_scope: "st-none",
+};
+
+// For the status-opt button variant (IgpPanel's existing `.status-opt
+// .sel-X` classes only exist for achieved/partial/not/none/not_applicable)
+// — maps the 6 statement states onto that same 4-colour set rather than
+// adding a parallel palette just for statements.
+export const statementStatusSelClass: Record<StatementStatus, string> = {
+  not_reviewed: "none",
+  yes: "achieved",
+  no: "not",
+  no_pending: "partial",
+  yes_future_phase: "partial",
+  not_in_scope: "none",
+};
+
+export const statementStatusOrder: StatementStatus[] = [
+  "not_reviewed",
+  "yes",
+  "no",
+  "no_pending",
+  "yes_future_phase",
+  "not_in_scope",
+];
+
+export interface StatementComment {
+  id: string;
+  authorEmail: string | null;
+  body: string;
+  createdAt: string; // display date + time
+  mentionedEmails: string[];
+}
+
+export interface IgpStatement {
+  id: string; // caf_igp_statements.id
+  statementNumber: number;
+  level: StatementLevel;
+  text: string;
+  // The *effective* status/note for this scope item: its own answer if
+  // one exists, otherwise the enterprise-wide (org-level) answer,
+  // otherwise not_reviewed. isEnterpriseWide says which of those it is.
+  status: StatementStatus;
+  note: string;
+  isEnterpriseWide: boolean;
+  reviewedByEmail: string | null;
+  updatedAt: string | null; // display date + time
+  evidence: EvidenceFile[];
+  comments: StatementComment[];
+}
+
 export interface Igp {
   id: string; // e.g. "B2.a"
   name: string;
@@ -69,6 +144,7 @@ export interface Igp {
   guidance: string;
   guidanceNote?: string;
   evidence: EvidenceFile[];
+  statements: IgpStatement[];
 }
 
 export interface Section {

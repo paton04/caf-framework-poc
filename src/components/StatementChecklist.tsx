@@ -27,6 +27,10 @@ interface CommentableUser {
 // Renders nothing for an outcome that doesn't have statements populated
 // yet — see docs/v2-rearchitecture-design.md §3.3, the outcome's own
 // status just stays manually set in that case, same as today.
+//
+// To set the organisation-wide default for a statement, open this same
+// panel on the Enterprise-wide scope item instead — there's no toggle
+// here any more (see 0020_enterprise_scope_item.sql).
 export function StatementChecklist({
   scopeItemId,
   igpCode,
@@ -54,6 +58,27 @@ export function StatementChecklist({
     });
   }
 
+  function renderRow(s: IgpStatement) {
+    return (
+      <StatementRow
+        key={s.id}
+        statement={s}
+        expanded={expandedId === s.id}
+        onToggle={() => setExpandedId(expandedId === s.id ? null : s.id)}
+        pending={isPending}
+        commentableUsers={commentableUsers}
+        onStatusChange={(status) => run(() => updateStatementAssessment(scopeItemId, s.id, status, s.note))}
+        onSaveNote={(note) => run(() => updateStatementAssessment(scopeItemId, s.id, s.status, note))}
+        onAddEvidence={(formData) =>
+          run(() => addStatementEvidence(scopeItemId, s.id, s.status, s.note, igpCode, formData))
+        }
+        onPostComment={(body, mentionedUserIds) =>
+          run(() => postStatementComment(scopeItemId, s.id, s.status, s.note, body, mentionedUserIds))
+        }
+      />
+    );
+  }
+
   return (
     <div className="field">
       <label>Sub-checks ({statements.length})</label>
@@ -62,62 +87,15 @@ export function StatementChecklist({
         status (source: Ofgem&apos;s CAF Overlay for DGE Sector) — set
         each one, attach evidence, and discuss with the team. This
         outcome&apos;s status above is derived from these automatically.
+        To set the organisation-wide default instead of just this scope
+        item, do this on the{" "}
+        <strong>Enterprise-wide</strong> scope item.
       </p>
       <div className="statement-list">
         {partial.length > 0 && <div className="statement-group-label">Partially achieved</div>}
-        {partial.map((s) => (
-          <StatementRow
-            key={s.id}
-            statement={s}
-            expanded={expandedId === s.id}
-            onToggle={() => setExpandedId(expandedId === s.id ? null : s.id)}
-            pending={isPending}
-            commentableUsers={commentableUsers}
-            onStatusChange={(status, enterpriseWide) =>
-              run(() => updateStatementAssessment(scopeItemId, s.id, enterpriseWide, status, s.note))
-            }
-            onSaveNote={(note, enterpriseWide) =>
-              run(() => updateStatementAssessment(scopeItemId, s.id, enterpriseWide, s.status, note))
-            }
-            onAddEvidence={(enterpriseWide, formData) =>
-              run(() =>
-                addStatementEvidence(scopeItemId, s.id, enterpriseWide, s.status, s.note, igpCode, formData)
-              )
-            }
-            onPostComment={(enterpriseWide, body, mentionedUserIds) =>
-              run(() =>
-                postStatementComment(scopeItemId, s.id, enterpriseWide, s.status, s.note, body, mentionedUserIds)
-              )
-            }
-          />
-        ))}
+        {partial.map(renderRow)}
         {achieved.length > 0 && <div className="statement-group-label">Achieved</div>}
-        {achieved.map((s) => (
-          <StatementRow
-            key={s.id}
-            statement={s}
-            expanded={expandedId === s.id}
-            onToggle={() => setExpandedId(expandedId === s.id ? null : s.id)}
-            pending={isPending}
-            commentableUsers={commentableUsers}
-            onStatusChange={(status, enterpriseWide) =>
-              run(() => updateStatementAssessment(scopeItemId, s.id, enterpriseWide, status, s.note))
-            }
-            onSaveNote={(note, enterpriseWide) =>
-              run(() => updateStatementAssessment(scopeItemId, s.id, enterpriseWide, s.status, note))
-            }
-            onAddEvidence={(enterpriseWide, formData) =>
-              run(() =>
-                addStatementEvidence(scopeItemId, s.id, enterpriseWide, s.status, s.note, igpCode, formData)
-              )
-            }
-            onPostComment={(enterpriseWide, body, mentionedUserIds) =>
-              run(() =>
-                postStatementComment(scopeItemId, s.id, enterpriseWide, s.status, s.note, body, mentionedUserIds)
-              )
-            }
-          />
-        ))}
+        {achieved.map(renderRow)}
       </div>
     </div>
   );
@@ -139,25 +117,23 @@ function StatementRow({
   onToggle: () => void;
   pending: boolean;
   commentableUsers: CommentableUser[];
-  onStatusChange: (status: StatementStatus, enterpriseWide: boolean) => void;
-  onSaveNote: (note: string, enterpriseWide: boolean) => void;
-  onAddEvidence: (enterpriseWide: boolean, formData: FormData) => void;
-  onPostComment: (enterpriseWide: boolean, body: string, mentionedUserIds: string[]) => void;
+  onStatusChange: (status: StatementStatus) => void;
+  onSaveNote: (note: string) => void;
+  onAddEvidence: (formData: FormData) => void;
+  onPostComment: (body: string, mentionedUserIds: string[]) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [note, setNote] = useState(statement.note);
-  const [enterpriseWide, setEnterpriseWide] = useState(statement.isEnterpriseWide);
   const [commentBody, setCommentBody] = useState("");
   const [mentionedIds, setMentionedIds] = useState<string[]>([]);
 
-  // Reset local drafts whenever this statement's own saved data changes
-  // (a fresh fetch after a save) — same pattern IgpPanel uses for its
-  // narrative/owner drafts.
+  // Reset the local note draft whenever this statement's own saved data
+  // changes (a fresh fetch after a save) — same pattern IgpPanel uses
+  // for its narrative/owner drafts.
   const [trackedUpdatedAt, setTrackedUpdatedAt] = useState(statement.updatedAt);
   if (statement.updatedAt !== trackedUpdatedAt) {
     setTrackedUpdatedAt(statement.updatedAt);
     setNote(statement.note);
-    setEnterpriseWide(statement.isEnterpriseWide);
   }
 
   function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
@@ -165,7 +141,7 @@ function StatementRow({
     if (!file) return;
     const formData = new FormData();
     formData.append("file", file);
-    onAddEvidence(enterpriseWide, formData);
+    onAddEvidence(formData);
     e.target.value = "";
   }
 
@@ -182,7 +158,7 @@ function StatementRow({
 
   function handlePostComment() {
     if (!commentBody.trim()) return;
-    onPostComment(enterpriseWide, commentBody, mentionedIds);
+    onPostComment(commentBody, mentionedIds);
     setCommentBody("");
     setMentionedIds([]);
   }
@@ -192,7 +168,11 @@ function StatementRow({
       <button type="button" className="statement-row-head" onClick={onToggle}>
         <span className="statement-num mono">{statement.statementNumber}</span>
         <span className="statement-text">{statement.text}</span>
-        {statement.isEnterpriseWide && <span className="enterprise-badge">org-wide</span>}
+        {statement.isEnterpriseWide && (
+          <span className="enterprise-badge" title="Inherited from the Enterprise-wide scope item's default">
+            org default
+          </span>
+        )}
         <span className={`status ${statementStatusClass[statement.status]}`}>
           {statementStatusLabel[statement.status]}
         </span>
@@ -210,28 +190,19 @@ function StatementRow({
                     statement.status === s ? `sel-${statementStatusSelClass[s]}` : ""
                   }`}
                   disabled={pending}
-                  onClick={() => onStatusChange(s, enterpriseWide)}
+                  onClick={() => onStatusChange(s)}
                 >
                   {statementStatusLabel[s]}
                 </button>
               ))}
             </div>
-          </div>
-
-          <div className="field">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={enterpriseWide}
-                onChange={(e) => setEnterpriseWide(e.target.checked)}
-              />
-              Applies at organisation level, not just this scope item
-            </label>
-            <p className="field-hint">
-              {enterpriseWide
-                ? "This answer applies to every scope item that doesn't have its own override for this statement — change scope will overwrite the org-wide one."
-                : "This answer only applies to this scope item. Check the box to set an organisation-wide default instead."}
-            </p>
+            {statement.isEnterpriseWide && (
+              <p className="field-hint">
+                Currently showing the organisation-wide default. Setting
+                a status here creates this scope item&apos;s own answer,
+                which takes over from the default from now on.
+              </p>
+            )}
           </div>
 
           <div className="field">
@@ -243,7 +214,7 @@ function StatementRow({
               placeholder="Optional note for this statement."
               onChange={(e) => setNote(e.target.value)}
               onBlur={() => {
-                if (note !== statement.note) onSaveNote(note, enterpriseWide);
+                if (note !== statement.note) onSaveNote(note);
               }}
             />
           </div>

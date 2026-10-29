@@ -181,6 +181,20 @@ its whole NIS scope or split across several — a single enterprise-wide
 answer can satisfy the same statement for every scope item that doesn't
 override it with its own.
 
+> **Superseded 2026-10-29** — see `0020_enterprise_scope_item.sql`.
+> Live use surfaced two problems with the NULL-scope_item_id model: the
+> per-statement checkbox toggle was confusing (Fiona: "supposed to apply
+> to an entire indicator"), and nothing in the UI made "enterprise-wide"
+> feel like a first-class thing you could go look at. Replaced with a
+> real, protected scope item (`scope_items.is_enterprise`) — assessing
+> an outcome *on* that scope item, through the exact same UI as any
+> other, now *is* the organisation-wide default. Resolution logic is
+> unchanged in spirit (own row wins, else the enterprise row, else
+> not_reviewed) — it's just two real scope item ids being compared
+> instead of a real one and NULL, which also meant 0018's RPC workaround
+> for the old partial-unique-index pair could be dropped — a normal
+> unique constraint and a plain upsert work now.
+
 ### 3.3 Rolling statement status up to the outcome-level status
 
 `igp_assessments.status` (today: free-text, manually set) becomes

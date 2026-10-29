@@ -7,41 +7,43 @@ import type { StatementStatus } from "@/lib/caf-data/types";
 // RLS is the real enforcement here (owner_admin/contributor only for
 // writes, grc read-only) — same pattern as igp.ts. These actions just
 // run as the calling user via the server client.
+//
+// There's no "enterprise-wide" flag to pass any more (see
+// 0020_enterprise_scope_item.sql) — writing against the Enterprise-wide
+// scope item's own id *is* setting the organisation-wide default,
+// through these same actions, no special-casing needed. A plain upsert
+// works now too: igp_statement_assessments has one normal unique
+// constraint since scope_item_id stopped being nullable, so the RPC
+// 0018 added to work around a partial-index limitation isn't needed
+// any more.
 
-// igp_statement_assessments can't use a plain upsert from the client —
-// see 0018_statement_assessment_upsert.sql for why (the two partial
-// unique indexes a nullable scope_item_id needs aren't expressible
-// through PostgREST's onConflict). This RPC does it correctly in SQL.
 async function ensureAssessmentRow(
   supabase: Awaited<ReturnType<typeof createClient>>,
   statementId: string,
   scopeItemId: string,
-  enterpriseWide: boolean,
   status: StatementStatus,
   note: string
 ): Promise<string> {
-  // The function returns a single public.igp_statement_assessments row
-  // (not SETOF), so `data` is that row object directly — no .select()/
-  // .single() needed the way a table query would.
-  const { data, error } = await supabase.rpc("upsert_statement_assessment", {
-    p_statement_id: statementId,
-    p_scope_item_id: enterpriseWide ? null : scopeItemId,
-    p_status: status,
-    p_note: note,
-  });
+  const { data, error } = await supabase
+    .from("igp_statement_assessments")
+    .upsert(
+      { statement_id: statementId, scope_item_id: scopeItemId, status, note },
+      { onConflict: "statement_id,scope_item_id" }
+    )
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
-  return (data as { id: string }).id;
+  return data.id as string;
 }
 
 export async function updateStatementAssessment(
   scopeItemId: string,
   statementId: string,
-  enterpriseWide: boolean,
   status: StatementStatus,
   note: string
 ) {
   const supabase = await createClient();
-  await ensureAssessmentRow(supabase, statementId, scopeItemId, enterpriseWide, status, note);
+  await ensureAssessmentRow(supabase, statementId, scopeItemId, status, note);
   revalidatePath(`/scope/${scopeItemId}`);
 }
 
@@ -53,7 +55,6 @@ export async function updateStatementAssessment(
 export async function addStatementEvidence(
   scopeItemId: string,
   statementId: string,
-  enterpriseWide: boolean,
   currentStatus: StatementStatus,
   currentNote: string,
   igpCode: string,
@@ -65,14 +66,7 @@ export async function addStatementEvidence(
   }
 
   const supabase = await createClient();
-  const assessmentId = await ensureAssessmentRow(
-    supabase,
-    statementId,
-    scopeItemId,
-    enterpriseWide,
-    currentStatus,
-    currentNote
-  );
+  const assessmentId = await ensureAssessmentRow(supabase, statementId, scopeItemId, currentStatus, currentNote);
 
   const storagePath = `${igpCode}/statements/${Date.now()}-${file.name}`;
   const { error: uploadError } = await supabase.storage.from("evidence").upload(storagePath, file);
@@ -94,7 +88,6 @@ export async function addStatementEvidence(
 export async function postStatementComment(
   scopeItemId: string,
   statementId: string,
-  enterpriseWide: boolean,
   currentStatus: StatementStatus,
   currentNote: string,
   body: string,
@@ -104,14 +97,7 @@ export async function postStatementComment(
   if (!trimmed) throw new Error("Write something before posting.");
 
   const supabase = await createClient();
-  const assessmentId = await ensureAssessmentRow(
-    supabase,
-    statementId,
-    scopeItemId,
-    enterpriseWide,
-    currentStatus,
-    currentNote
-  );
+  const assessmentId = await ensureAssessmentRow(supabase, statementId, scopeItemId, currentStatus, currentNote);
 
   const { data: comment, error: commentError } = await supabase
     .from("statement_comments")

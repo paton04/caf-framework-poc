@@ -42,6 +42,23 @@ export function Heatmap({
     : null;
 
   const principles = sections.flatMap((s) => s.principles);
+
+  // Group a section's outcomes into columns by principle — "B2.a" and
+  // "B2.b" share a column, "B3.a" starts the next one — so you can see
+  // at a glance where one principle's outcomes end and the next one's
+  // begin, rather than everything flowing together in reading order.
+  // sec.principles already arrives sorted by sort_order, so grouping by
+  // first-seen order (a plain Map) keeps the right left-to-right order.
+  function groupByPrinciple(sectionPrinciples: Igp[]) {
+    const groups = new Map<string, Igp[]>();
+    for (const p of sectionPrinciples) {
+      const principle = p.id.split(".")[0];
+      const list = groups.get(principle) ?? [];
+      list.push(p);
+      groups.set(principle, list);
+    }
+    return [...groups.entries()];
+  }
   const counts = {
     achieved: principles.filter((p) => p.status === "achieved").length,
     partial: principles.filter((p) => p.status === "partial").length,
@@ -114,16 +131,21 @@ export function Heatmap({
               <div className="name">{sec.name}</div>
             </div>
             <div className="principle-grid">
-              {sec.principles.map((p) => (
-                <button
-                  key={p.id}
-                  className="cell"
-                  onClick={() => setSelection({ sectionCode: sec.code, igpId: p.id })}
-                >
-                  <div className="pid">{p.id}</div>
-                  <div className="pname">{p.name}</div>
-                  <div className={`status ${statusClass[p.status]}`}>{statusLabel[p.status]}</div>
-                </button>
+              {groupByPrinciple(sec.principles).map(([principle, items]) => (
+                <div className="principle-column" key={principle}>
+                  <div className="principle-column-head mono">{principle}</div>
+                  {items.map((p) => (
+                    <button
+                      key={p.id}
+                      className="cell"
+                      onClick={() => setSelection({ sectionCode: sec.code, igpId: p.id })}
+                    >
+                      <div className="pid">{p.id}</div>
+                      <div className="pname">{p.name}</div>
+                      <div className={`status ${statusClass[p.status]}`}>{statusLabel[p.status]}</div>
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
           </div>

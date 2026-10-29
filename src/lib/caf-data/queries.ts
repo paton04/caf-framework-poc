@@ -127,7 +127,7 @@ interface StatementRow {
 interface StatementAssessmentRow {
   id: string;
   statement_id: string;
-  scope_item_id: string | null;
+  scope_item_id: string; // not null since 0020 — always a real scope item, including the Enterprise one
   status: StatementStatus;
   note: string;
   reviewed_by: string | null;
@@ -142,19 +142,31 @@ interface StatementCommentRow {
   created_at: string;
 }
 
+/** The one scope_items row with is_enterprise = true (see
+ * 0020_enterprise_scope_item.sql) — null only if that migration hasn't
+ * been run yet. */
+async function getEnterpriseScopeItemId(supabase: SupabaseClient): Promise<string | null> {
+  const { data } = await supabase.from("scope_items").select("id").eq("is_enterprise", true).maybeSingle();
+  return data?.id ?? null;
+}
+
 /**
  * Every caf_igp_statement, each resolved to this scope item's *effective*
- * status — its own answer if one exists, otherwise the enterprise-wide
- * (scope_item_id = null) one, otherwise not_reviewed (see
- * docs/v2-rearchitecture-design.md §3.2) — with its evidence and comment
- * thread attached, grouped by igp_code. An outcome with no statements
- * populated yet just gets no entry here, which is what lets its
- * igp_assessments.status keep being manually set exactly as before.
+ * status — its own answer if one exists, otherwise the Enterprise-wide
+ * scope item's answer, otherwise not_reviewed (see
+ * docs/v2-rearchitecture-design.md §3.2 and 0020's migration comment)
+ * — with its evidence and comment thread attached, grouped by igp_code.
+ * An outcome with no statements populated yet just gets no entry here,
+ * which is what lets its igp_assessments.status keep being manually set
+ * exactly as before.
  */
 async function getStatementsByIgp(
   supabase: SupabaseClient,
   scopeItemId: string
 ): Promise<Map<string, IgpStatement[]>> {
+  const enterpriseId = await getEnterpriseScopeItemId(supabase);
+  const relevantScopeIds = [...new Set([scopeItemId, enterpriseId].filter((id): id is string => !!id))];
+
   const [statementsRes, assessmentsRes] = await Promise.all([
     supabase
       .from("caf_igp_statements")
@@ -163,7 +175,7 @@ async function getStatementsByIgp(
     supabase
       .from("igp_statement_assessments")
       .select("id, statement_id, scope_item_id, status, note, reviewed_by, updated_at")
-      .or(`scope_item_id.eq.${scopeItemId},scope_item_id.is.null`),
+      .in("scope_item_id", relevantScopeIds),
   ]);
 
   const statements = (statementsRes.data ?? []) as StatementRow[];
@@ -173,7 +185,7 @@ async function getStatementsByIgp(
   const enterpriseByStatement = new Map<string, StatementAssessmentRow>();
   for (const a of assessments) {
     if (a.scope_item_id === scopeItemId) ownByStatement.set(a.statement_id, a);
-    else if (a.scope_item_id === null) enterpriseByStatement.set(a.statement_id, a);
+    else if (enterpriseId && a.scope_item_id === enterpriseId) enterpriseByStatement.set(a.statement_id, a);
   }
 
   const resolvedByStatement = new Map<
@@ -293,7 +305,7 @@ export async function getScopeItemAssessment(
   const [scopeItemRes, sectionsRes, igpsRes, assessmentsRes, evidenceRes, statementsByIgp] = await Promise.all([
     supabase
       .from("scope_items")
-      .select("id, name, type, description, essential_function, criticality, owner, owner_id")
+      .select("id, name, type, description, essential_function, criticality, owner, owner_id, is_enterprise")
       .eq("id", scopeItemId)
       .maybeSingle(),
     supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
@@ -371,6 +383,7 @@ export async function getScopeItemAssessment(
     owner: sir.owner,
     ownerId: sir.owner_id,
     ownerEmail: sir.owner_id ? (ownerEmailById.get(sir.owner_id) ?? null) : null,
+    isEnterprise: sir.is_enterprise,
   };
 
   return { scopeItem, sections, generalEvidence };
@@ -451,7 +464,11 @@ export async function getSupplierIgps(
 export async function getScopeItems(supabase: SupabaseClient): Promise<ScopeItem[]> {
   const { data } = await supabase
     .from("scope_items")
-    .select("id, name, type, description, essential_function, criticality, owner, owner_id")
+    .select("id, name, type, description, essential_function, criticality, owner, owner_id, is_enterprise")
+    // The Enterprise-wide item first regardless of when it was created —
+    // it's the one item every other row can implicitly depend on, worth
+    // keeping easy to find rather than buried wherever created_at puts it.
+    .order("is_enterprise", { ascending: false })
     .order("created_at");
 
   const rows = data ?? [];
@@ -470,6 +487,7 @@ export async function getScopeItems(supabase: SupabaseClient): Promise<ScopeItem
     owner: row.owner,
     ownerId: row.owner_id,
     ownerEmail: row.owner_id ? (ownerEmailById.get(row.owner_id) ?? null) : null,
+    isEnterprise: row.is_enterprise,
   }));
 }
 

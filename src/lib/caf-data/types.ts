@@ -122,8 +122,12 @@ export interface IgpStatement {
   level: StatementLevel;
   text: string;
   // The *effective* status/note for this scope item: its own answer if
-  // one exists, otherwise the enterprise-wide (org-level) answer,
-  // otherwise not_reviewed. isEnterpriseWide says which of those it is.
+  // one exists, otherwise the Enterprise-wide scope item's answer,
+  // otherwise not_reviewed. isEnterpriseWide is true when it came from
+  // the latter — i.e. this scope item hasn't set its own answer and is
+  // inheriting the organisation-wide default. There's no toggle to set
+  // this directly any more (see 0020) — to set the default itself,
+  // assess this statement on the Enterprise-wide scope item.
   status: StatementStatus;
   note: string;
   isEnterpriseWide: boolean;
@@ -169,6 +173,11 @@ export interface ScopeItem {
   owner: string;
   ownerId: string | null;
   ownerEmail: string | null;
+  // True for exactly one scope item — the organisation-wide default
+  // (see 0020_enterprise_scope_item.sql). Assessing a statement here
+  // is what IgpStatement.isEnterpriseWide elsewhere reflects as
+  // "inherited" on every other scope item that hasn't overridden it.
+  isEnterprise: boolean;
 }
 
 // Per-scope-item indicator counts for the scope items list — how far

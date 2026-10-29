@@ -16,6 +16,15 @@ export default async function SnapshotDetailPage({
   const snapshot = await getSnapshotDetail(await createClient(), id);
   if (!snapshot) notFound();
 
+  // Snapshots are permanent — a frozen `data` blob never gets rewritten
+  // (see 0009_cycle_snapshots.sql), so one written by an earlier version
+  // of the app before today's shape existed can still be missing fields
+  // it never had a chance to include. Guard against that rather than
+  // let the whole read-only history view crash on one old row.
+  const scopeItems = snapshot.data.scopeItems ?? [];
+  const assessments = snapshot.data.assessments ?? [];
+  const incomplete = !snapshot.data.scopeItems || !snapshot.data.assessments;
+
   return (
     <>
       <h1 className="page-title">{snapshot.label}</h1>
@@ -24,6 +33,14 @@ export default async function SnapshotDetailPage({
         this is exactly how things stood at that moment, regardless of what&apos;s
         changed since.
       </p>
+      {incomplete && (
+        <div className="banner auth-error" style={{ marginBottom: 20 }}>
+          This snapshot&apos;s stored data is incomplete — it was likely
+          frozen by an earlier version of the tool before some of what&apos;s
+          shown below existed. What can be shown is shown; the rest can&apos;t
+          be recovered, since a frozen snapshot is never rewritten.
+        </div>
+      )}
 
       <h2 className="page-title" style={{ fontSize: 16 }}>
         Scope register
@@ -39,12 +56,12 @@ export default async function SnapshotDetailPage({
           </tr>
         </thead>
         <tbody>
-          {snapshot.data.scopeItems.length === 0 && (
+          {scopeItems.length === 0 && (
             <tr>
               <td colSpan={5}>No scope items at the time this was frozen.</td>
             </tr>
           )}
-          {snapshot.data.scopeItems.map((item) => (
+          {scopeItems.map((item) => (
             <tr key={item.id}>
               <td>{item.name}</td>
               <td>{item.type}</td>
@@ -56,7 +73,7 @@ export default async function SnapshotDetailPage({
         </tbody>
       </table>
 
-      {snapshot.data.assessments.map(({ scopeItem, sections, generalEvidence }) => (
+      {assessments.map(({ scopeItem, sections, generalEvidence }) => (
         <div key={scopeItem.id} style={{ marginBottom: 32 }}>
           <h2 className="page-title" style={{ fontSize: 16 }}>
             {scopeItem.name}

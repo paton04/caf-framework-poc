@@ -15,8 +15,13 @@ const INTERNAL_NAV = [
 const SUPPLIER_NAV = [{ href: "/", label: "Your Indicators" }];
 
 // GRC's whole job is reviewing evidence — no need for the doer-focused
-// pages (scope register, my items, etc.).
-const GRC_NAV = [{ href: "/evidence", label: "Evidence Library" }];
+// pages (scope register, my items, etc.) — but the board-facing
+// progress report is squarely an oversight page, same reasoning as
+// why it's owner_admin-only too (see /report/page.tsx).
+const GRC_NAV = [
+  { href: "/evidence", label: "Evidence Library" },
+  { href: "/report", label: "Progress Report" },
+];
 
 // No role assigned yet — deliberately minimal, not the full internal nav.
 const UNASSIGNED_NAV = [{ href: "/", label: "Scope Items" }];
@@ -25,7 +30,7 @@ export function Sidebar({ role }: { role: UserRole | null }) {
   const pathname = usePathname();
   const navItems =
     role === "owner_admin"
-      ? [...INTERNAL_NAV, { href: "/admin", label: "Admin" }]
+      ? [...INTERNAL_NAV, { href: "/report", label: "Progress Report" }, { href: "/admin", label: "Admin" }]
       : role === "contributor"
         ? INTERNAL_NAV
         : role === "supplier"

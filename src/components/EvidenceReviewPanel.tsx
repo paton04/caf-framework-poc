@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { EvidenceLink } from "@/components/EvidenceLink";
 import {
   reviewStatusClass,
   reviewStatusLabel,
@@ -61,7 +62,11 @@ export function EvidenceReviewPanel({
                 ✕
               </button>
               <div className="pid mono">{row.linkedIgp ?? "General"}</div>
-              <h3>{row.file}</h3>
+              <h3>
+                <EvidenceLink storagePath={row.storagePath} className="">
+                  {row.file}
+                </EvidenceLink>
+              </h3>
             </div>
             <div className="overlay-body">
               {error && <div className="banner auth-error">{error}</div>}

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { EvidenceLink } from "@/components/EvidenceLink";
 import { EvidenceReviewPanel } from "@/components/EvidenceReviewPanel";
 import { approveEvidence, rejectEvidence } from "@/app/actions/evidence-review";
 import { reviewStatusClass, reviewStatusLabel, type EvidenceLibraryRow } from "@/lib/caf-data/types";
@@ -74,7 +75,9 @@ export function EvidenceLibrary({
           )}
           {rows.map((row) => (
             <tr key={row.id} style={{ cursor: "pointer" }} onClick={() => open(row)}>
-              <td>{row.file}</td>
+              <td onClick={(e) => e.stopPropagation()}>
+                <EvidenceLink storagePath={row.storagePath}>{row.file}</EvidenceLink>
+              </td>
               <td>{row.scopeItemName ?? "—"}</td>
               <td className="mono">{row.linkedIgp ?? "General"}</td>
               <td>{row.uploaded}</td>

@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addEvidence } from "@/app/actions/igp";
+import { EvidenceLink } from "@/components/EvidenceLink";
 import { reviewStatusClass, reviewStatusLabel, type Igp } from "@/lib/caf-data/types";
 
 // Supplier's own view: only the IGPs they're linked to, guidance to work
@@ -49,7 +50,7 @@ export function SupplierIgpList({ igps }: { igps: Igp[] }) {
             {igp.evidence.map((file) => (
               <div key={file.id}>
                 <div className="evidence-item">
-                  <span className="fname">{file.name}</span>
+                  <EvidenceLink storagePath={file.storagePath}>{file.name}</EvidenceLink>
                   <span className={`status ${reviewStatusClass[file.reviewStatus]}`} style={{ marginTop: 0 }}>
                     {reviewStatusLabel[file.reviewStatus]}
                   </span>

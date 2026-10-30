@@ -47,21 +47,30 @@ export function ScopeItemDetailHeader({
     <>
       <div className="page-header-row">
         <div>
-          <h1 className="page-title">{scopeItem.name}</h1>
+          <h1 className="page-title">
+            {scopeItem.name}
+            {scopeItem.isEnterprise && <span className="enterprise-badge">org-wide default</span>}
+          </h1>
           {scopeItem.description && (
             <p className="page-description">{scopeItem.description}</p>
           )}
         </div>
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => {
-            setError(null);
-            setEditing(true);
-          }}
-        >
-          Edit scope details
-        </button>
+        {scopeItem.isEnterprise ? (
+          <span className="field-hint" style={{ margin: 0 }}>
+            Fixed, protected record — can&apos;t be edited or deleted.
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setError(null);
+              setEditing(true);
+            }}
+          >
+            Edit scope details
+          </button>
+        )}
       </div>
 
       <div className="meta-row">

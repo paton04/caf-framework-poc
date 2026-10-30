@@ -137,7 +137,9 @@ interface StatementAssessmentRow {
 interface StatementCommentRow {
   id: string;
   statement_assessment_id: string;
-  author_id: string;
+  // Nullable since 0022 — set null if the author's account is later
+  // deleted, rather than losing the comment or blocking the deletion.
+  author_id: string | null;
   body: string;
   created_at: string;
 }
@@ -259,7 +261,7 @@ async function getStatementsByIgp(
     const list = commentsByAssessment.get(row.statement_assessment_id) ?? [];
     list.push({
       id: row.id,
-      authorEmail: emailById.get(row.author_id) ?? null,
+      authorEmail: row.author_id ? (emailById.get(row.author_id) ?? null) : null,
       body: row.body,
       createdAt: formatDateTime(row.created_at),
       mentionedEmails: mentionsByComment.get(row.id) ?? [],

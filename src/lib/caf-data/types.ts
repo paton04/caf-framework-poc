@@ -248,6 +248,19 @@ export interface ProfileWithRole {
   role: UserRole | null;
 }
 
+// Auth-level status (ban state, MFA enrollment) — only obtainable via
+// the Supabase Admin API (service_role), unlike everything else in
+// ProfileWithRole which comes from ordinary RLS-governed tables. Kept
+// as a separate, optional lookup rather than folded into
+// ProfileWithRole so every other page that fetches profiles doesn't
+// start needing admin access it never did before.
+export interface AdminUserStatus {
+  id: string;
+  banned: boolean;
+  mfaEnrolled: boolean;
+  lastSignInAt: string | null; // display string
+}
+
 // What a frozen snapshot's `data` column holds — the same shapes the
 // live pages already render, so viewing a snapshot can reuse them.
 // One assessment tree per scope item, since status is scope-item-specific.

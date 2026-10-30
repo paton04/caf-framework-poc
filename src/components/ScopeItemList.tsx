@@ -4,55 +4,67 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ScopeItemPanel } from "@/components/ScopeItemPanel";
+import { ProgressBar, progressTotals } from "@/components/Progress";
 import { createScopeItem, type ScopeItemInput } from "@/app/actions/scope";
 import type { ConfigurableListItem, ScopeItem, ScopeItemProgress } from "@/lib/caf-data/types";
 
-// Small non-zero-only counts, reusing the same status colours as the
-// heatmap's own progress strip — e.g. "5 Achieved  2 Partial  9 Not started".
-function ProgressSummary({ progress }: { progress: ScopeItemProgress | undefined }) {
-  if (!progress) return null;
-  const parts: { count: number; label: string; className: string }[] = [
-    { count: progress.achieved, label: "Achieved", className: "st-achieved" },
-    { count: progress.partial, label: "Partial", className: "st-partial" },
-    { count: progress.not, label: "Not achieved", className: "st-not" },
-    { count: progress.none, label: "Not started", className: "st-none" },
-    { count: progress.notApplicable, label: "N/A", className: "st-none" },
-  ].filter((p) => p.count > 0);
-
-  if (parts.length === 0) return null;
-
+function Chevron() {
   return (
-    <div className="progress-mini">
-      {parts.map((p) => (
-        <span key={p.label} className={`status ${p.className}`}>
-          {p.count} {p.label}
-        </span>
-      ))}
-    </div>
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3l5 5-5 5" />
+    </svg>
   );
 }
 
-// The entry point: select a scope item to work on, or add a new one.
-// Editing an item's own details and everything else about it (its CAF
-// assessment) both happen on its own /scope/[id] page from here on —
-// this list doesn't do either itself.
+function ScopeItemRow({ item, progress }: { item: ScopeItem; progress: ScopeItemProgress | undefined }) {
+  const totals = progress ? progressTotals(progress) : null;
+  const owner = item.ownerEmail || item.owner || "Unassigned";
+  return (
+    <Link href={`/scope/${item.id}`} className="scope-row">
+      <div className="scope-row-main">
+        <div className="scope-row-name">{item.name}</div>
+        <div className="scope-row-meta">
+          {item.type} · {item.essentialFunction || "No essential function"} · {item.criticality} · Owner {owner}
+        </div>
+      </div>
+      <div className="scope-row-progress">
+        {progress && <ProgressBar progress={progress} size="sm" />}
+        <span className="scope-row-count">
+          {!totals || totals.assessed === 0 ? "Not started" : `${totals.assessed} of ${totals.total}`}
+        </span>
+        <Chevron />
+      </div>
+    </Link>
+  );
+}
+
+// The entry point: the overall summary (passed in from the server page),
+// then one row per scope item — select one to work on, or add a new one.
+// The Enterprise-wide item sits apart at the bottom, since it holds the
+// organisation's default answers rather than being a system in scope.
 export function ScopeItemList({
   items,
   internalUsers,
   progress,
   types,
   essentialFunctions,
+  summary,
 }: {
   items: ScopeItem[];
   internalUsers: { id: string; email: string }[];
   progress: Record<string, ScopeItemProgress>;
   types: ConfigurableListItem[];
   essentialFunctions: ConfigurableListItem[];
+  summary: React.ReactNode;
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const regular = items.filter((i) => !i.isEnterprise);
+  const enterprise = items.find((i) => i.isEnterprise);
+  const enterpriseTotals = enterprise && progress[enterprise.id] ? progressTotals(progress[enterprise.id]) : null;
 
   function handleSave(input: ScopeItemInput) {
     setError(null);
@@ -68,78 +80,55 @@ export function ScopeItemList({
   }
 
   return (
-    <>
-      <button
-        type="button"
-        className="btn-primary"
-        style={{ marginBottom: 16 }}
-        onClick={() => {
-          setError(null);
-          setAdding(true);
-        }}
-      >
-        + Add scope item
-      </button>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Essential function</th>
-            <th>Criticality</th>
-            <th>Owner</th>
-            <th>Progress</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.length === 0 && (
-            <tr>
-              <td colSpan={6}>No scope items yet — add one above.</td>
-            </tr>
-          )}
-          {items.map((item) => (
-            <tr key={item.id}>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>
-                  <div>
-                    {item.name}
-                    {item.isEnterprise && <span className="enterprise-badge">org-wide default</span>}
-                  </div>
-                  {item.description && (
-                    <div style={{ marginTop: 2, fontSize: 12, color: "var(--ink-soft)" }}>
-                      {item.description}
-                    </div>
-                  )}
-                </Link>
-              </td>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>
-                  {item.type}
-                  {item.typeRemoved && <span className="fmeta"> (removed)</span>}
-                </Link>
-              </td>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>{item.essentialFunction}</Link>
-              </td>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>{item.criticality}</Link>
-              </td>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>
-                  {item.ownerEmail || item.owner || (
-                    <span style={{ color: "var(--ink-soft)" }}>Unassigned</span>
-                  )}
-                </Link>
-              </td>
-              <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>
-                  <ProgressSummary progress={progress[item.id]} />
-                </Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="stack-lg">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Scope items</h1>
+          <p className="page-lede">
+            {regular.length} item{regular.length === 1 ? "" : "s"} in scope · every one assessed against the full
+            CAF
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => {
+            setError(null);
+            setAdding(true);
+          }}
+        >
+          + Add scope item
+        </button>
+      </div>
+
+      {summary}
+
+      <section aria-labelledby="items-heading" className="stack-sm">
+        <h2 id="items-heading" className="section-heading">
+          Your scope items
+        </h2>
+        {regular.length === 0 && <div className="card empty-note">No scope items yet — add one above.</div>}
+        {regular.map((item) => (
+          <ScopeItemRow key={item.id} item={item} progress={progress[item.id]} />
+        ))}
+
+        {enterprise && (
+          <Link href={`/scope/${enterprise.id}`} className="scope-row scope-row-enterprise">
+            <div className="scope-row-main">
+              <div className="scope-row-name">Organisation-wide defaults</div>
+              <div className="scope-row-meta">
+                Answers set here apply to every scope item unless that item gives its own
+              </div>
+            </div>
+            <div className="scope-row-progress">
+              <span className="scope-row-count">
+                {enterpriseTotals ? `${enterpriseTotals.assessed} of ${enterpriseTotals.total} set` : ""}
+              </span>
+              <Chevron />
+            </div>
+          </Link>
+        )}
+      </section>
 
       <ScopeItemPanel
         target={adding ? "new" : null}
@@ -152,6 +141,6 @@ export function ScopeItemList({
         onSave={handleSave}
         onDelete={() => {}}
       />
-    </>
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getMyItems } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
+import { outcomeHref } from "@/lib/caf-data/outcomes";
 import { statusLabel, type IgpStatus } from "@/lib/caf-data/types";
 
 // Internal roles only — allow-listed so an unassigned account (role ===
@@ -44,18 +45,18 @@ export default async function MyItemsPage() {
           {igps.map((igp) => (
             <tr key={`${igp.scopeItemId}-${igp.code}`}>
               <td className="row-link-cell">
-                <Link href={`/scope/${igp.scopeItemId}`}>{igp.scopeItemName}</Link>
+                <Link href={outcomeHref(igp.scopeItemId, igp.code)}>{igp.scopeItemName}</Link>
               </td>
               <td className="row-link-cell">
-                <Link href={`/scope/${igp.scopeItemId}`} className="mono">
+                <Link href={outcomeHref(igp.scopeItemId, igp.code)} className="mono">
                   {igp.code}
                 </Link>
               </td>
               <td className="row-link-cell">
-                <Link href={`/scope/${igp.scopeItemId}`}>{igp.name}</Link>
+                <Link href={outcomeHref(igp.scopeItemId, igp.code)}>{igp.name}</Link>
               </td>
               <td className="row-link-cell">
-                <Link href={`/scope/${igp.scopeItemId}`}>{statusLabel[igp.status as IgpStatus]}</Link>
+                <Link href={outcomeHref(igp.scopeItemId, igp.code)}>{statusLabel[igp.status as IgpStatus]}</Link>
               </td>
             </tr>
           ))}

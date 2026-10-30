@@ -66,12 +66,15 @@ export interface EvidenceFile {
 export type StatementLevel = "partially_achieved" | "achieved";
 export type StatementStatus = "not_reviewed" | "yes" | "no" | "no_pending" | "yes_future_phase" | "not_in_scope";
 
+// Short answer labels for the one-click buttons on each sub-check. The
+// SGN-sheet codes they stand for (NO-100, YES-P2) are in the comments,
+// not the UI.
 export const statementStatusLabel: Record<StatementStatus, string> = {
-  not_reviewed: "Not reviewed",
-  yes: "YES",
-  no: "NO",
-  no_pending: "NO-100 — review ongoing",
-  yes_future_phase: "YES-P2 — later phase",
+  not_reviewed: "Not answered",
+  yes: "Yes",
+  no: "No",
+  no_pending: "In progress", // NO-100 — review ongoing
+  yes_future_phase: "Later phase", // YES-P2 — later phase
   not_in_scope: "Not in scope",
 };
 

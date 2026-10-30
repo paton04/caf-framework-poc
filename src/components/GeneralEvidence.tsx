@@ -8,7 +8,8 @@ import { reviewStatusClass, reviewStatusLabel, type EvidenceFile } from "@/lib/c
 
 // Evidence about this scope item as a whole (a network diagram, an asset
 // register extract) rather than proof of one specific CAF indicator —
-// sits above the per-indicator heatmap, not inside any indicator's panel.
+// tucked into a collapsed one-line summary on the scope item page, since
+// it's occasional admin rather than the main assessment work.
 export function GeneralEvidence({
   scopeItemId,
   evidence,
@@ -54,11 +55,26 @@ export function GeneralEvidence({
     });
   }
 
+  const approved = evidence.filter((e) => e.reviewStatus === "approved").length;
+  const pendingReview = evidence.filter((e) => e.reviewStatus === "pending").length;
+  const rejected = evidence.filter((e) => e.reviewStatus === "rejected").length;
+  const breakdown = [
+    approved && `${approved} approved`,
+    pendingReview && `${pendingReview} pending`,
+    rejected && `${rejected} rejected`,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
-    <div className="general-evidence">
-      <h2 className="page-title" style={{ fontSize: 16 }}>
-        General evidence
-      </h2>
+    <details className="card general-evidence">
+      <summary>
+        <span>
+          <strong>General evidence</strong> · {evidence.length} file{evidence.length === 1 ? "" : "s"}
+          {breakdown && ` (${breakdown})`}
+        </span>
+        <span className="summary-action">Manage</span>
+      </summary>
       <p className="field-hint">
         Evidence about this scope item as a whole — a network diagram, an
         asset record — rather than proof of one specific CAF indicator.
@@ -121,6 +137,6 @@ export function GeneralEvidence({
           + Add general evidence
         </button>
       )}
-    </div>
+    </details>
   );
 }

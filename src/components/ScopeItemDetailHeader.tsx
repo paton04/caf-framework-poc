@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ScopeItemPanel } from "@/components/ScopeItemPanel";
 import { deleteScopeItem, updateScopeItem, type ScopeItemInput } from "@/app/actions/scope";
@@ -47,55 +48,41 @@ export function ScopeItemDetailHeader({
     });
   }
 
+  const owner = scopeItem.ownerEmail || scopeItem.owner || "Unassigned";
+
   return (
     <>
-      <div className="page-header-row">
-        <div>
-          <h1 className="page-title">
-            {scopeItem.name}
-            {scopeItem.isEnterprise && <span className="enterprise-badge">org-wide default</span>}
-          </h1>
-          {scopeItem.description && (
-            <p className="page-description">{scopeItem.description}</p>
+      <div className="stack-xs">
+        <Link href="/" className="back-link">
+          ← Scope items
+        </Link>
+        <div className="page-head">
+          <div>
+            <h1 className="page-title">
+              {scopeItem.isEnterprise ? "Organisation-wide defaults" : scopeItem.name}
+            </h1>
+            <p className="page-lede">
+              {scopeItem.isEnterprise
+                ? "Answers set here apply to every scope item unless that item gives its own."
+                : `${scopeItem.type}${scopeItem.typeRemoved ? " (removed)" : ""} · ${
+                    scopeItem.essentialFunction || "No essential function"
+                  }${scopeItem.essentialFunctionRemoved ? " (removed)" : ""} · ${scopeItem.criticality} · Owner ${owner}`}
+            </p>
+          </div>
+          {!scopeItem.isEnterprise && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setError(null);
+                setEditing(true);
+              }}
+            >
+              Edit details
+            </button>
           )}
         </div>
-        {scopeItem.isEnterprise ? (
-          <span className="field-hint" style={{ margin: 0 }}>
-            Fixed, protected record — can&apos;t be edited or deleted.
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              setError(null);
-              setEditing(true);
-            }}
-          >
-            Edit scope details
-          </button>
-        )}
       </div>
-
-      <div className="meta-row">
-        <span className="meta-pill">
-          {scopeItem.type}
-          {scopeItem.typeRemoved && " (removed)"}
-        </span>
-        <span className="meta-pill">
-          {scopeItem.essentialFunction || "No essential function set"}
-          {scopeItem.essentialFunctionRemoved && " (removed)"}
-        </span>
-        <span className="meta-pill">{scopeItem.criticality}</span>
-        <span className="meta-pill">
-          Owner: {scopeItem.ownerEmail || scopeItem.owner || "Unassigned"}
-        </span>
-      </div>
-
-      <p className="page-sub">
-        Click any indicator below to justify it for this scope item
-        specifically, and attach its evidence.
-      </p>
 
       <ScopeItemPanel
         target={editing ? scopeItem : null}

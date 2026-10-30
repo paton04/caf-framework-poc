@@ -97,16 +97,29 @@ export function IgpPanel({
                   </p>
                 )}
                 <div className="status-select">
-                  {statusOrder.map((s) => (
-                    <button
-                      key={s}
-                      className={`status-opt ${igp.status === s ? `sel-${s}` : ""}`}
-                      disabled={pending || igp.statements.length > 0}
-                      onClick={() => onStatusChange(s)}
-                    >
-                      {statusLabel[s]}
-                    </button>
-                  ))}
+                  {statusOrder
+                    .filter((s) => {
+                      // "Partially achieved" is a real option for manual
+                      // entry (no statements yet) or for any outcome whose
+                      // source statements actually include a
+                      // partially_achieved tier. Some outcomes (e.g.
+                      // A1.a) only ever have Achieved/Not achieved in the
+                      // real framework — showing Partial as a choice
+                      // there, even disabled, would suggest a status this
+                      // outcome can structurally never reach.
+                      if (s !== "partial" || igp.statements.length === 0) return true;
+                      return igp.statements.some((st) => st.level === "partially_achieved");
+                    })
+                    .map((s) => (
+                      <button
+                        key={s}
+                        className={`status-opt ${igp.status === s ? `sel-${s}` : ""}`}
+                        disabled={pending || igp.statements.length > 0}
+                        onClick={() => onStatusChange(s)}
+                      >
+                        {statusLabel[s]}
+                      </button>
+                    ))}
                 </div>
               </div>
               <div className="field">

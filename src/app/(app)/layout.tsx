@@ -1,16 +1,8 @@
-import { Sidebar } from "@/components/Sidebar";
+import { TopNav } from "@/components/TopNav";
 import { NotificationStrip } from "@/components/NotificationStrip";
-import { signOut } from "@/app/actions/auth";
 import { getSessionAndRole } from "@/lib/auth";
 import { getAnnouncement, getNotifications } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
-
-const ROLE_LABEL: Record<string, string> = {
-  owner_admin: "Owner/Admin",
-  contributor: "Contributor",
-  supplier: "Supplier",
-  grc: "GRC",
-};
 
 export default async function AppShellLayout({ children }: { children: React.ReactNode }) {
   const { user, role } = await getSessionAndRole();
@@ -20,27 +12,10 @@ export default async function AppShellLayout({ children }: { children: React.Rea
 
   return (
     <div className="shell">
-      <Sidebar role={role} />
-      <div className="main">
-        <div className="topbar">
-          <div className="org">
-            <strong>Assurance Register</strong> — CAF Self-Assessment (Trial)
-          </div>
-          <div className="topbar-right">
-            <div className="role-pill">
-              {user?.email ?? "SIGNED IN"} — {role ? ROLE_LABEL[role] : "No role assigned"}
-            </div>
-            <form action={signOut}>
-              <button className="link-btn" type="submit">
-                Sign out
-              </button>
-            </form>
-          </div>
-        </div>
-        {announcement && <div className="announcement-banner">{announcement}</div>}
-        {notifications.length > 0 && <NotificationStrip notifications={notifications} />}
-        <div className="content">{children}</div>
-      </div>
+      <TopNav role={role} email={user?.email ?? null} />
+      {announcement && <div className="announcement-banner">{announcement}</div>}
+      {notifications.length > 0 && <NotificationStrip notifications={notifications} />}
+      <main className="content">{children}</main>
     </div>
   );
 }

@@ -11,7 +11,6 @@ import {
 import {
   reviewStatusClass,
   reviewStatusLabel,
-  statementStatusClass,
   statementStatusLabel,
   statementStatusOrder,
   statementStatusSelClass,
@@ -29,8 +28,11 @@ interface CommentableUser {
 // yet — see docs/v2-rearchitecture-design.md §3.3, the outcome's own
 // status just stays manually set in that case, same as today.
 //
+// Each statement shows its one-click answers up front; its note,
+// evidence and comments open below it on demand, one at a time.
+//
 // To set the organisation-wide default for a statement, open this same
-// panel on the Enterprise-wide scope item instead — there's no toggle
+// outcome on the Enterprise-wide scope item instead — there's no toggle
 // here any more (see 0020_enterprise_scope_item.sql).
 export function StatementChecklist({
   scopeItemId,
@@ -80,24 +82,26 @@ export function StatementChecklist({
     );
   }
 
+  const groups = [
+    { key: "partial", title: "To reach Partially achieved", items: partial },
+    { key: "achieved", title: "To reach Achieved", items: achieved },
+  ].filter((g) => g.items.length > 0);
+
   return (
-    <div className="field">
-      <label>Sub-checks ({statements.length})</label>
-      <p className="field-hint">
-        The individual numbered statements behind this outcome&apos;s
-        status (source: Ofgem&apos;s CAF Overlay for DGE Sector) — set
-        each one, attach evidence, and discuss with the team. This
-        outcome&apos;s status above is derived from these automatically.
-        To set the organisation-wide default instead of just this scope
-        item, do this on the{" "}
-        <strong>Enterprise-wide</strong> scope item.
-      </p>
-      <div className="statement-list">
-        {partial.length > 0 && <div className="statement-group-label">Partially achieved</div>}
-        {partial.map(renderRow)}
-        {achieved.length > 0 && <div className="statement-group-label">Achieved</div>}
-        {achieved.map(renderRow)}
-      </div>
+    <div className="stack-lg">
+      {groups.map((g) => (
+        <section key={g.key} aria-labelledby={`group-${g.key}`} className="stack-sm">
+          <div className="card-head">
+            <h2 id={`group-${g.key}`} className="section-heading">
+              {g.title}
+            </h2>
+            <span className="muted">
+              {g.items.filter((s) => s.status !== "not_reviewed").length} of {g.items.length} answered
+            </span>
+          </div>
+          {g.items.map(renderRow)}
+        </section>
+      ))}
     </div>
   );
 }
@@ -127,6 +131,7 @@ function StatementRow({
   const [note, setNote] = useState(statement.note);
   const [commentBody, setCommentBody] = useState("");
   const [mentionedIds, setMentionedIds] = useState<string[]>([]);
+  const [panel, setPanel] = useState<"note" | "evidence" | "comments">("note");
 
   // Reset the local note draft whenever this statement's own saved data
   // changes (a fresh fetch after a save) — same pattern IgpPanel uses
@@ -164,134 +169,167 @@ function StatementRow({
     setMentionedIds([]);
   }
 
+  type Panel = "note" | "evidence" | "comments";
+  const openPanel: Panel | null = expanded ? panel : null;
+  function toggle(p: Panel) {
+    if (expanded && panel === p) {
+      onToggle();
+    } else {
+      setPanel(p);
+      if (!expanded) onToggle();
+    }
+  }
+
   return (
-    <div className={`statement-row ${expanded ? "expanded" : ""}`}>
-      <button type="button" className="statement-row-head" onClick={onToggle}>
-        <span className="statement-num mono">{statement.statementNumber}</span>
-        <span className="statement-text">{statement.text}</span>
-        {statement.isEnterpriseWide && (
-          <span className="enterprise-badge" title="Inherited from the Enterprise-wide scope item's default">
-            org default
-          </span>
-        )}
-        <span className={`status ${statementStatusClass[statement.status]}`}>
-          {statementStatusLabel[statement.status]}
-        </span>
-      </button>
-      {expanded && (
-        <div className="statement-row-body">
-          <div className="field">
-            <label>Status</label>
-            <div className="status-select">
-              {statementStatusOrder.map((s) => (
+    <div className="card statement-card">
+      <div className="statement-head">
+        <span className="statement-num mono">#{statement.statementNumber}</span>
+        <p className="statement-text">
+          {statement.text}
+          {statement.isEnterpriseWide && (
+            <span className="enterprise-badge" title="Inherited from the organisation-wide default">
+              org default
+            </span>
+          )}
+        </p>
+      </div>
+      <div className="statement-actions">
+        <div className="answer-group" role="group" aria-label={`Answer for statement ${statement.statementNumber}`}>
+          {statementStatusOrder
+            .filter((s) => s !== "not_reviewed")
+            .map((s) => {
+              const selected = statement.status === s && !statement.isEnterpriseWide;
+              const inherited = statement.status === s && statement.isEnterpriseWide;
+              return (
                 <button
                   key={s}
                   type="button"
-                  className={`status-opt ${
-                    statement.status === s ? `sel-${statementStatusSelClass[s]}` : ""
+                  aria-pressed={selected}
+                  className={`answer-btn ${selected ? `sel-${statementStatusSelClass[s]}` : ""} ${
+                    inherited ? "inherited" : ""
                   }`}
                   disabled={pending}
-                  onClick={() => onStatusChange(s)}
+                  // Clicking the selected answer again clears it back to
+                  // "not answered".
+                  onClick={() => onStatusChange(selected ? "not_reviewed" : s)}
                 >
                   {statementStatusLabel[s]}
                 </button>
+              );
+            })}
+        </div>
+        <div className="statement-links">
+          <button type="button" className="text-btn" aria-expanded={openPanel === "note"} onClick={() => toggle("note")}>
+            {statement.note ? "Note ✓" : "Note"}
+          </button>
+          <button
+            type="button"
+            className="text-btn"
+            aria-expanded={openPanel === "evidence"}
+            onClick={() => toggle("evidence")}
+          >
+            Evidence{statement.evidence.length > 0 ? ` (${statement.evidence.length})` : ""}
+          </button>
+          <button
+            type="button"
+            className="text-btn"
+            aria-expanded={openPanel === "comments"}
+            onClick={() => toggle("comments")}
+          >
+            Comments{statement.comments.length > 0 ? ` (${statement.comments.length})` : ""}
+          </button>
+        </div>
+      </div>
+
+      {openPanel === "note" && (
+        <div className="statement-panel">
+          <textarea
+            className="narrative-box"
+            rows={2}
+            value={note}
+            aria-label="Note"
+            placeholder="Optional note for this statement — saves when you click away."
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={() => {
+              if (note !== statement.note) onSaveNote(note);
+            }}
+          />
+        </div>
+      )}
+
+      {openPanel === "evidence" && (
+        <div className="statement-panel">
+          {statement.evidence.length === 0 && <p className="fmeta">None yet.</p>}
+          {statement.evidence.map((file) => (
+            <div className="evidence-item" key={file.id}>
+              <EvidenceLink storagePath={file.storagePath}>{file.name}</EvidenceLink>
+              <span className={`status ${reviewStatusClass[file.reviewStatus]}`} style={{ marginTop: 0 }}>
+                {reviewStatusLabel[file.reviewStatus]}
+              </span>
+              <span className="fmeta">{file.date}</span>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="add-evidence"
+            disabled={pending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            + Attach evidence
+          </button>
+          <input ref={fileInputRef} type="file" hidden onChange={handleFilePicked} />
+        </div>
+      )}
+
+      {openPanel === "comments" && (
+        <div className="statement-panel">
+          {statement.comments.length > 0 && (
+            <div className="comment-thread">
+              {statement.comments.map((c) => (
+                <div className="comment" key={c.id}>
+                  <div className="comment-meta">
+                    <span className="comment-author">{c.authorEmail ?? "Unknown"}</span>
+                    <span className="fmeta">{c.createdAt}</span>
+                  </div>
+                  <div className="comment-body">{c.body}</div>
+                </div>
               ))}
             </div>
-            {statement.isEnterpriseWide && (
-              <p className="field-hint">
-                Currently showing the organisation-wide default. Setting
-                a status here creates this scope item&apos;s own answer,
-                which takes over from the default from now on.
-              </p>
-            )}
-          </div>
-
-          <div className="field">
-            <label>Note</label>
-            <textarea
-              className="narrative-box"
-              rows={2}
-              value={note}
-              placeholder="Optional note for this statement."
-              onChange={(e) => setNote(e.target.value)}
-              onBlur={() => {
-                if (note !== statement.note) onSaveNote(note);
-              }}
-            />
-          </div>
-
-          <div className="field">
-            <label>Evidence</label>
-            {statement.evidence.length === 0 && <p className="fmeta">None yet.</p>}
-            {statement.evidence.map((file) => (
-              <div className="evidence-item" key={file.id}>
-                <EvidenceLink storagePath={file.storagePath}>{file.name}</EvidenceLink>
-                <span className={`status ${reviewStatusClass[file.reviewStatus]}`} style={{ marginTop: 0 }}>
-                  {reviewStatusLabel[file.reviewStatus]}
-                </span>
-                <span className="fmeta">{file.date}</span>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="add-evidence"
-              disabled={pending}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              + Attach evidence
-            </button>
-            <input ref={fileInputRef} type="file" hidden onChange={handleFilePicked} />
-          </div>
-
-          <div className="field">
-            <label>Comments ({statement.comments.length})</label>
-            {statement.comments.length > 0 && (
-              <div className="comment-thread">
-                {statement.comments.map((c) => (
-                  <div className="comment" key={c.id}>
-                    <div className="comment-meta">
-                      <span className="comment-author">{c.authorEmail ?? "Unknown"}</span>
-                      <span className="fmeta">{c.createdAt}</span>
-                    </div>
-                    <div className="comment-body">{c.body}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <textarea
-              className="narrative-box"
-              rows={2}
-              placeholder="Add a comment…"
-              value={commentBody}
-              onChange={(e) => setCommentBody(e.target.value)}
-            />
-            {commentableUsers.length > 0 && (
-              <div className="mention-picker">
-                <span className="field-hint" style={{ margin: 0 }}>
-                  Mention:
-                </span>
-                {commentableUsers.map((u) => (
-                  <button
-                    type="button"
-                    key={u.id}
-                    className={`mention-chip ${mentionedIds.includes(u.id) ? "sel" : ""}`}
-                    onClick={() => toggleMention(u)}
-                  >
-                    @{u.email.split("@")[0]}
-                  </button>
-                ))}
-              </div>
-            )}
-            <button
-              type="button"
-              className="btn-secondary"
-              style={{ marginTop: 8 }}
-              disabled={pending || !commentBody.trim()}
-              onClick={handlePostComment}
-            >
-              Post comment
-            </button>
-          </div>
+          )}
+          <textarea
+            className="narrative-box"
+            rows={2}
+            aria-label="New comment"
+            placeholder="Add a comment…"
+            value={commentBody}
+            onChange={(e) => setCommentBody(e.target.value)}
+          />
+          {commentableUsers.length > 0 && (
+            <div className="mention-picker">
+              <span className="field-hint" style={{ margin: 0 }}>
+                Mention:
+              </span>
+              {commentableUsers.map((u) => (
+                <button
+                  type="button"
+                  key={u.id}
+                  className={`mention-chip ${mentionedIds.includes(u.id) ? "sel" : ""}`}
+                  onClick={() => toggleMention(u)}
+                >
+                  @{u.email.split("@")[0]}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ marginTop: 8 }}
+            disabled={pending || !commentBody.trim()}
+            onClick={handlePostComment}
+          >
+            Post comment
+          </button>
         </div>
       )}
     </div>

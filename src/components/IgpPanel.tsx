@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { StatementChecklist } from "@/components/StatementChecklist";
 import {
   type Igp,
   type IgpStatus,
@@ -12,9 +13,11 @@ import {
 
 interface IgpPanelProps {
   igp: Igp | null;
+  scopeItemId: string;
   open: boolean;
   pending: boolean;
   internalUsers: { id: string; email: string }[];
+  commentableUsers: { id: string; email: string }[];
   onClose: () => void;
   onStatusChange: (status: IgpStatus) => void;
   onSaveDetails: (narrative: string, owner: string, ownerId: string | null) => void;
@@ -26,9 +29,11 @@ interface IgpPanelProps {
 // doesn't fire a write per keystroke.
 export function IgpPanel({
   igp,
+  scopeItemId,
   open,
   pending,
   internalUsers,
+  commentableUsers,
   onClose,
   onStatusChange,
   onSaveDetails,
@@ -85,12 +90,18 @@ export function IgpPanel({
               </div>
               <div className="field">
                 <label>Status</label>
+                {igp.statements.length > 0 && (
+                  <p className="field-hint">
+                    Derived automatically from the sub-checks below —
+                    set those instead of this directly.
+                  </p>
+                )}
                 <div className="status-select">
                   {statusOrder.map((s) => (
                     <button
                       key={s}
                       className={`status-opt ${igp.status === s ? `sel-${s}` : ""}`}
-                      disabled={pending}
+                      disabled={pending || igp.statements.length > 0}
                       onClick={() => onStatusChange(s)}
                     >
                       {statusLabel[s]}
@@ -158,6 +169,12 @@ export function IgpPanel({
                 </button>
                 <input ref={fileInputRef} type="file" hidden onChange={handleFilePicked} />
               </div>
+              <StatementChecklist
+                scopeItemId={scopeItemId}
+                igpCode={igp.id}
+                statements={igp.statements}
+                commentableUsers={commentableUsers}
+              />
             </div>
             <div className="overlay-foot">
               <button

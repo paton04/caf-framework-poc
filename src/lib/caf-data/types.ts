@@ -58,6 +58,85 @@ export interface EvidenceFile {
   description: string | null;
 }
 
+// The real numbered IGP statements under an outcome (v2 rearchitecture
+// — see docs/v2-rearchitecture-design.md). Most outcomes don't have
+// these populated yet (only Section B does so far); `statements` is an
+// empty array everywhere else, and the outcome's own status stays
+// manually set until statements exist for it.
+export type StatementLevel = "partially_achieved" | "achieved";
+export type StatementStatus = "not_reviewed" | "yes" | "no" | "no_pending" | "yes_future_phase" | "not_in_scope";
+
+export const statementStatusLabel: Record<StatementStatus, string> = {
+  not_reviewed: "Not reviewed",
+  yes: "YES",
+  no: "NO",
+  no_pending: "NO-100 — review ongoing",
+  yes_future_phase: "YES-P2 — later phase",
+  not_in_scope: "Not in scope",
+};
+
+// Reuses the outcome-level status colours — same visual language, no
+// need for a parallel palette just because the label set differs.
+export const statementStatusClass: Record<StatementStatus, string> = {
+  not_reviewed: "st-none",
+  yes: "st-achieved",
+  no: "st-not",
+  no_pending: "st-partial",
+  yes_future_phase: "st-partial",
+  not_in_scope: "st-none",
+};
+
+// For the status-opt button variant (IgpPanel's existing `.status-opt
+// .sel-X` classes only exist for achieved/partial/not/none/not_applicable)
+// — maps the 6 statement states onto that same 4-colour set rather than
+// adding a parallel palette just for statements.
+export const statementStatusSelClass: Record<StatementStatus, string> = {
+  not_reviewed: "none",
+  yes: "achieved",
+  no: "not",
+  no_pending: "partial",
+  yes_future_phase: "partial",
+  not_in_scope: "none",
+};
+
+export const statementStatusOrder: StatementStatus[] = [
+  "not_reviewed",
+  "yes",
+  "no",
+  "no_pending",
+  "yes_future_phase",
+  "not_in_scope",
+];
+
+export interface StatementComment {
+  id: string;
+  authorEmail: string | null;
+  body: string;
+  createdAt: string; // display date + time
+  mentionedEmails: string[];
+}
+
+export interface IgpStatement {
+  id: string; // caf_igp_statements.id
+  statementNumber: number;
+  level: StatementLevel;
+  text: string;
+  // The *effective* status/note for this scope item: its own answer if
+  // one exists, otherwise the Enterprise-wide scope item's answer,
+  // otherwise not_reviewed. isEnterpriseWide is true when it came from
+  // the latter — i.e. this scope item hasn't set its own answer and is
+  // inheriting the organisation-wide default. There's no toggle to set
+  // this directly any more (see 0020) — to set the default itself,
+  // assess this statement on the Enterprise-wide scope item.
+  status: StatementStatus;
+  note: string;
+  isEnterpriseWide: boolean;
+  reviewedByEmail: string | null;
+  updatedAt: string | null; // display date + time
+  evidence: EvidenceFile[];
+  comments: StatementComment[];
+}
+
 export interface Igp {
   id: string; // e.g. "B2.a"
   name: string;
@@ -69,6 +148,7 @@ export interface Igp {
   guidance: string;
   guidanceNote?: string;
   evidence: EvidenceFile[];
+  statements: IgpStatement[];
 }
 
 export interface Section {
@@ -77,22 +157,46 @@ export interface Section {
   principles: Igp[];
 }
 
-export type ScopeItemType = "Environment" | "Application" | "Other";
+// Was a fixed union; now an admin-managed list (configurable_lists,
+// list_name 'scope_item_type' — see 0024_configurable_lists.sql), so
+// it's just a string a scope item happens to hold, not a closed set
+// TypeScript can check membership of.
+export type ScopeItemType = string;
 export type ScopeCriticality = "Tier 1" | "Tier 2" | "Tier 3";
 
-export const scopeItemTypes: ScopeItemType[] = ["Environment", "Application", "Other"];
 export const scopeCriticalities: ScopeCriticality[] = ["Tier 1", "Tier 2", "Tier 3"];
+
+// One entry in an admin-managed reference list (configurable_lists).
+// `removed` is a soft-delete flag, never an actual row delete — a
+// scope item already holding a removed value keeps it verbatim; the
+// UI just stops offering it for new selections and marks it
+// "(removed)" wherever it's still shown.
+export interface ConfigurableListItem {
+  value: string;
+  removed: boolean;
+}
 
 export interface ScopeItem {
   id: string;
   name: string;
   type: ScopeItemType;
+  // True if `type` no longer appears (or appears removed) in the
+  // current scope_item_type list — computed server-side at fetch time
+  // so display components don't each need the whole list just to know
+  // this.
+  typeRemoved: boolean;
   description: string;
   essentialFunction: string;
+  essentialFunctionRemoved: boolean;
   criticality: ScopeCriticality;
   owner: string;
   ownerId: string | null;
   ownerEmail: string | null;
+  // True for exactly one scope item — the organisation-wide default
+  // (see 0020_enterprise_scope_item.sql). Assessing a statement here
+  // is what IgpStatement.isEnterpriseWide elsewhere reflects as
+  // "inherited" on every other scope item that hasn't overridden it.
+  isEnterprise: boolean;
 }
 
 // Per-scope-item indicator counts for the scope items list — how far
@@ -161,6 +265,19 @@ export interface ProfileWithRole {
   id: string;
   email: string;
   role: UserRole | null;
+}
+
+// Auth-level status (ban state, MFA enrollment) — only obtainable via
+// the Supabase Admin API (service_role), unlike everything else in
+// ProfileWithRole which comes from ordinary RLS-governed tables. Kept
+// as a separate, optional lookup rather than folded into
+// ProfileWithRole so every other page that fetches profiles doesn't
+// start needing admin access it never did before.
+export interface AdminUserStatus {
+  id: string;
+  banned: boolean;
+  mfaEnrolled: boolean;
+  lastSignInAt: string | null; // display string
 }
 
 // What a frozen snapshot's `data` column holds — the same shapes the

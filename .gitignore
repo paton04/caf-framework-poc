@@ -37,6 +37,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase CLI local link state (project ref, pooler URL, tool versions —
+# local machine state, not source) + any ad-hoc DB dumps taken locally
+supabase/.temp
+*.sql.bak
+backup-*.sql
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AuditLogEntry,
+  ConfigurableListItem,
   EvidenceFile,
   EvidenceLibraryRow,
   Igp,
+  IgpStatement,
   Notification,
   ProfileWithRole,
   ScopeItem,
@@ -13,6 +15,8 @@ import type {
   SnapshotData,
   SnapshotDetail,
   SnapshotSummary,
+  StatementComment,
+  StatementStatus,
   SupplierRow,
   UserRole,
 } from "./types";
@@ -112,6 +116,214 @@ export async function getCurrentUserRole(
   return (data?.role as UserRole | undefined) ?? null;
 }
 
+interface StatementRow {
+  id: string;
+  igp_code: string;
+  statement_number: number;
+  level: "partially_achieved" | "achieved";
+  statement: string;
+  sort_order: number;
+}
+
+interface StatementAssessmentRow {
+  id: string;
+  statement_id: string;
+  scope_item_id: string; // not null since 0020 — always a real scope item, including the Enterprise one
+  status: StatementStatus;
+  note: string;
+  reviewed_by: string | null;
+  updated_at: string;
+}
+
+interface StatementCommentRow {
+  id: string;
+  statement_assessment_id: string;
+  // Nullable since 0022 — set null if the author's account is later
+  // deleted, rather than losing the comment or blocking the deletion.
+  author_id: string | null;
+  body: string;
+  created_at: string;
+}
+
+/** The one scope_items row with is_enterprise = true (see
+ * 0020_enterprise_scope_item.sql) — null only if that migration hasn't
+ * been run yet. */
+async function getEnterpriseScopeItemId(supabase: SupabaseClient): Promise<string | null> {
+  const { data } = await supabase.from("scope_items").select("id").eq("is_enterprise", true).maybeSingle();
+  return data?.id ?? null;
+}
+
+/** Every value (active and removed) in an admin-managed reference list
+ * (configurable_lists — see 0024_configurable_lists.sql), ordered for
+ * display. Used both for the Admin page's management UI (shows
+ * everything) and, filtered to `!removed`, for choosing a value on a
+ * scope item. */
+export async function getConfigurableList(
+  supabase: SupabaseClient,
+  listName: string
+): Promise<ConfigurableListItem[]> {
+  const { data } = await supabase
+    .from("configurable_lists")
+    .select("value, removed_at")
+    .eq("list_name", listName)
+    .order("sort_order");
+  return (data ?? []).map((row) => ({ value: row.value, removed: row.removed_at !== null }));
+}
+
+/** Just the removed values for a list, as a Set — cheap way for
+ * getScopeItems/getScopeItemAssessment to flag a scope item's
+ * type/essential_function as "(removed)" without needing the whole
+ * list's sort order or active values. */
+async function getRemovedListValues(supabase: SupabaseClient, listName: string): Promise<Set<string>> {
+  const { data } = await supabase
+    .from("configurable_lists")
+    .select("value")
+    .eq("list_name", listName)
+    .not("removed_at", "is", null);
+  return new Set((data ?? []).map((row) => row.value));
+}
+
+/**
+ * Every caf_igp_statement, each resolved to this scope item's *effective*
+ * status — its own answer if one exists, otherwise the Enterprise-wide
+ * scope item's answer, otherwise not_reviewed (see
+ * docs/v2-rearchitecture-design.md §3.2 and 0020's migration comment)
+ * — with its evidence and comment thread attached, grouped by igp_code.
+ * An outcome with no statements populated yet just gets no entry here,
+ * which is what lets its igp_assessments.status keep being manually set
+ * exactly as before.
+ */
+async function getStatementsByIgp(
+  supabase: SupabaseClient,
+  scopeItemId: string
+): Promise<Map<string, IgpStatement[]>> {
+  const enterpriseId = await getEnterpriseScopeItemId(supabase);
+  const relevantScopeIds = [...new Set([scopeItemId, enterpriseId].filter((id): id is string => !!id))];
+
+  const [statementsRes, assessmentsRes] = await Promise.all([
+    supabase
+      .from("caf_igp_statements")
+      .select("id, igp_code, statement_number, level, statement, sort_order")
+      .order("sort_order"),
+    supabase
+      .from("igp_statement_assessments")
+      .select("id, statement_id, scope_item_id, status, note, reviewed_by, updated_at")
+      .in("scope_item_id", relevantScopeIds),
+  ]);
+
+  const statements = (statementsRes.data ?? []) as StatementRow[];
+  const assessments = (assessmentsRes.data ?? []) as StatementAssessmentRow[];
+
+  const ownByStatement = new Map<string, StatementAssessmentRow>();
+  const enterpriseByStatement = new Map<string, StatementAssessmentRow>();
+  for (const a of assessments) {
+    if (a.scope_item_id === scopeItemId) ownByStatement.set(a.statement_id, a);
+    else if (enterpriseId && a.scope_item_id === enterpriseId) enterpriseByStatement.set(a.statement_id, a);
+  }
+
+  const resolvedByStatement = new Map<
+    string,
+    { row: StatementAssessmentRow | null; isEnterpriseWide: boolean }
+  >();
+  for (const s of statements) {
+    const own = ownByStatement.get(s.id);
+    const ent = enterpriseByStatement.get(s.id);
+    resolvedByStatement.set(
+      s.id,
+      own ? { row: own, isEnterpriseWide: false } : { row: ent ?? null, isEnterpriseWide: !!ent }
+    );
+  }
+
+  const resolvedAssessmentIds = [...resolvedByStatement.values()]
+    .map((r) => r.row?.id)
+    .filter((id): id is string => !!id);
+
+  const [evidenceRes, commentsRes] = resolvedAssessmentIds.length
+    ? await Promise.all([
+        supabase
+          .from("evidence_files")
+          .select(`${EVIDENCE_COLUMNS}, statement_assessment_id`)
+          .in("statement_assessment_id", resolvedAssessmentIds)
+          .order("uploaded_at", { ascending: false }),
+        supabase
+          .from("statement_comments")
+          .select("id, statement_assessment_id, author_id, body, created_at")
+          .in("statement_assessment_id", resolvedAssessmentIds)
+          .order("created_at"),
+      ])
+    : [{ data: [] as unknown[] }, { data: [] as unknown[] }];
+
+  const evidenceRows = (evidenceRes.data ?? []) as (EvidenceRow & { statement_assessment_id: string })[];
+  const commentRows = (commentsRes.data ?? []) as StatementCommentRow[];
+  const commentIds = commentRows.map((c) => c.id);
+
+  const mentionsRes = commentIds.length
+    ? await supabase
+        .from("statement_comment_mentions")
+        .select("comment_id, mentioned_user_id")
+        .in("comment_id", commentIds)
+    : { data: [] as { comment_id: string; mentioned_user_id: string }[] };
+  const mentionRows = mentionsRes.data ?? [];
+
+  const emailById = await getEmailsByUserId(supabase, [
+    ...evidenceEmailIds(evidenceRows),
+    ...commentRows.map((c) => c.author_id),
+    ...mentionRows.map((m) => m.mentioned_user_id),
+    ...[...resolvedByStatement.values()].map((r) => r.row?.reviewed_by ?? null),
+  ]);
+
+  const evidenceByAssessment = new Map<string, EvidenceFile[]>();
+  for (const row of evidenceRows) {
+    const list = evidenceByAssessment.get(row.statement_assessment_id) ?? [];
+    list.push(mapEvidenceRow(row, emailById));
+    evidenceByAssessment.set(row.statement_assessment_id, list);
+  }
+
+  const mentionsByComment = new Map<string, string[]>();
+  for (const m of mentionRows) {
+    const list = mentionsByComment.get(m.comment_id) ?? [];
+    const email = emailById.get(m.mentioned_user_id);
+    if (email) list.push(email);
+    mentionsByComment.set(m.comment_id, list);
+  }
+
+  const commentsByAssessment = new Map<string, StatementComment[]>();
+  for (const row of commentRows) {
+    const list = commentsByAssessment.get(row.statement_assessment_id) ?? [];
+    list.push({
+      id: row.id,
+      authorEmail: row.author_id ? (emailById.get(row.author_id) ?? null) : null,
+      body: row.body,
+      createdAt: formatDateTime(row.created_at),
+      mentionedEmails: mentionsByComment.get(row.id) ?? [],
+    });
+    commentsByAssessment.set(row.statement_assessment_id, list);
+  }
+
+  const byIgp = new Map<string, IgpStatement[]>();
+  for (const s of statements) {
+    const resolved = resolvedByStatement.get(s.id)!;
+    const assessmentId = resolved.row?.id ?? null;
+    const list = byIgp.get(s.igp_code) ?? [];
+    list.push({
+      id: s.id,
+      statementNumber: s.statement_number,
+      level: s.level,
+      text: s.statement,
+      status: resolved.row?.status ?? "not_reviewed",
+      note: resolved.row?.note ?? "",
+      isEnterpriseWide: resolved.isEnterpriseWide,
+      reviewedByEmail: resolved.row?.reviewed_by ? (emailById.get(resolved.row.reviewed_by) ?? null) : null,
+      updatedAt: resolved.row?.updated_at ? formatDateTime(resolved.row.updated_at) : null,
+      evidence: assessmentId ? (evidenceByAssessment.get(assessmentId) ?? []) : [],
+      comments: assessmentId ? (commentsByAssessment.get(assessmentId) ?? []) : [],
+    });
+    byIgp.set(s.igp_code, list);
+  }
+
+  return byIgp;
+}
+
 /**
  * One scope item's full CAF assessment — every section/indicator, with
  * that item's own status/narrative/owner and evidence. This is the unit
@@ -123,27 +335,31 @@ export async function getScopeItemAssessment(
   supabase: SupabaseClient,
   scopeItemId: string
 ): Promise<ScopeItemAssessment | null> {
-  const [scopeItemRes, sectionsRes, igpsRes, assessmentsRes, evidenceRes] = await Promise.all([
-    supabase
-      .from("scope_items")
-      .select("id, name, type, description, essential_function, criticality, owner, owner_id")
-      .eq("id", scopeItemId)
-      .maybeSingle(),
-    supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
-    supabase
-      .from("caf_igps")
-      .select("code, section_code, name, sort_order, guidance, guidance_note")
-      .order("sort_order"),
-    supabase
-      .from("igp_assessments")
-      .select("igp_code, status, narrative, owner, owner_id")
-      .eq("scope_item_id", scopeItemId),
-    supabase
-      .from("evidence_files")
-      .select(EVIDENCE_COLUMNS)
-      .eq("scope_item_id", scopeItemId)
-      .order("uploaded_at", { ascending: false }),
-  ]);
+  const [scopeItemRes, sectionsRes, igpsRes, assessmentsRes, evidenceRes, statementsByIgp, removedTypes, removedFunctions] =
+    await Promise.all([
+      supabase
+        .from("scope_items")
+        .select("id, name, type, description, essential_function, criticality, owner, owner_id, is_enterprise")
+        .eq("id", scopeItemId)
+        .maybeSingle(),
+      supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
+      supabase
+        .from("caf_igps")
+        .select("code, section_code, name, sort_order, guidance, guidance_note")
+        .order("sort_order"),
+      supabase
+        .from("igp_assessments")
+        .select("igp_code, status, narrative, owner, owner_id")
+        .eq("scope_item_id", scopeItemId),
+      supabase
+        .from("evidence_files")
+        .select(EVIDENCE_COLUMNS)
+        .eq("scope_item_id", scopeItemId)
+        .order("uploaded_at", { ascending: false }),
+      getStatementsByIgp(supabase, scopeItemId),
+      getRemovedListValues(supabase, "scope_item_type"),
+      getRemovedListValues(supabase, "essential_function"),
+    ]);
 
   if (!scopeItemRes.data) return null;
 
@@ -187,6 +403,7 @@ export async function getScopeItemAssessment(
           guidance: igp.guidance,
           guidanceNote: igp.guidance_note ?? undefined,
           evidence: evidenceByIgp.get(igp.code) ?? [],
+          statements: statementsByIgp.get(igp.code) ?? [],
         };
       }),
   }));
@@ -196,12 +413,15 @@ export async function getScopeItemAssessment(
     id: sir.id,
     name: sir.name,
     type: sir.type,
+    typeRemoved: removedTypes.has(sir.type),
     description: sir.description,
     essentialFunction: sir.essential_function,
+    essentialFunctionRemoved: removedFunctions.has(sir.essential_function),
     criticality: sir.criticality,
     owner: sir.owner,
     ownerId: sir.owner_id,
     ownerEmail: sir.owner_id ? (ownerEmailById.get(sir.owner_id) ?? null) : null,
+    isEnterprise: sir.is_enterprise,
   };
 
   return { scopeItem, sections, generalEvidence };
@@ -273,31 +493,45 @@ export async function getSupplierIgps(
     guidance: igp.guidance,
     guidanceNote: igp.guidance_note ?? undefined,
     evidence: evidenceByIgp.get(igp.code) ?? [],
+    // Statement-level sub-checks aren't supplier-facing yet, same as
+    // igp_assessments narrative/owner above.
+    statements: [],
   }));
 }
 
 export async function getScopeItems(supabase: SupabaseClient): Promise<ScopeItem[]> {
   const { data } = await supabase
     .from("scope_items")
-    .select("id, name, type, description, essential_function, criticality, owner, owner_id")
+    .select("id, name, type, description, essential_function, criticality, owner, owner_id, is_enterprise")
+    // The Enterprise-wide item first regardless of when it was created —
+    // it's the one item every other row can implicitly depend on, worth
+    // keeping easy to find rather than buried wherever created_at puts it.
+    .order("is_enterprise", { ascending: false })
     .order("created_at");
 
   const rows = data ?? [];
-  const ownerEmailById = await getEmailsByUserId(
-    supabase,
-    rows.map((r) => r.owner_id)
-  );
+  const [ownerEmailById, removedTypes, removedFunctions] = await Promise.all([
+    getEmailsByUserId(
+      supabase,
+      rows.map((r) => r.owner_id)
+    ),
+    getRemovedListValues(supabase, "scope_item_type"),
+    getRemovedListValues(supabase, "essential_function"),
+  ]);
 
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     type: row.type,
+    typeRemoved: removedTypes.has(row.type),
     description: row.description,
     essentialFunction: row.essential_function,
+    essentialFunctionRemoved: removedFunctions.has(row.essential_function),
     criticality: row.criticality,
     owner: row.owner,
     ownerId: row.owner_id,
     ownerEmail: row.owner_id ? (ownerEmailById.get(row.owner_id) ?? null) : null,
+    isEnterprise: row.is_enterprise,
   }));
 }
 
@@ -425,6 +659,19 @@ export async function getInternalUsers(
   const profiles = await getProfilesWithRoles(supabase);
   return profiles
     .filter((p) => p.role === "owner_admin" || p.role === "contributor")
+    .map((p) => ({ id: p.id, email: p.email }));
+}
+
+/** Everyone who can read/post statement comments — owner_admin,
+ * contributor, and grc (unlike getInternalUsers above, grc is included
+ * here since statement_comments' RLS explicitly allows all three — see
+ * 0015_igp_statements.sql). Used for the @mention picker. */
+export async function getCommentableUsers(
+  supabase: SupabaseClient
+): Promise<{ id: string; email: string }[]> {
+  const profiles = await getProfilesWithRoles(supabase);
+  return profiles
+    .filter((p) => p.role === "owner_admin" || p.role === "contributor" || p.role === "grc")
     .map((p) => ({ id: p.id, email: p.email }));
 }
 

@@ -299,3 +299,31 @@ export interface SnapshotSummary {
 export interface SnapshotDetail extends SnapshotSummary {
   data: SnapshotData;
 }
+
+// Cross-scope-item rollup per outcome, for the board-facing progress
+// report (/report) — "how many scope items are Achieved/Partial/Not
+// achieved/Not started for B2.a", not one scope item's own status.
+// Deliberately excludes the Enterprise-wide scope item (it's a policy
+// bucket, not a system — counting it alongside real scope items would
+// misrepresent "how many of our systems are compliant").
+export interface ProgressReportOutcome {
+  code: string;
+  name: string;
+  achieved: number;
+  partial: number;
+  not: number;
+  none: number;
+  notApplicable: number;
+}
+
+export interface ProgressReportSection {
+  code: string;
+  name: string;
+  outcomes: ProgressReportOutcome[];
+}
+
+export interface ProgressReport {
+  totalScopeItems: number;
+  generatedAt: string; // display date + time
+  sections: ProgressReportSection[];
+}

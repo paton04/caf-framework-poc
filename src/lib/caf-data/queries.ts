@@ -8,6 +8,7 @@ import type {
   IgpStatement,
   Notification,
   ProfileWithRole,
+  ProgressReport,
   ScopeItem,
   ScopeItemAssessment,
   ScopeItemProgress,
@@ -570,6 +571,67 @@ export async function getScopeItemProgress(
   }
 
   return progressByScopeItem;
+}
+
+/**
+ * Cross-scope-item rollup per outcome, for the board-facing progress
+ * report (/report) — the inverse of getScopeItemProgress above: "how
+ * many scope items are at each status for B2.a" rather than "how is
+ * this one scope item doing overall". Excludes the Enterprise-wide
+ * scope item deliberately (see ProgressReport's own comment in types.ts).
+ */
+export async function getProgressReport(supabase: SupabaseClient): Promise<ProgressReport> {
+  const [sectionsRes, igpsRes, scopeItemsRes] = await Promise.all([
+    supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
+    supabase.from("caf_igps").select("code, section_code, name, sort_order").order("sort_order"),
+    supabase.from("scope_items").select("id").eq("is_enterprise", false),
+  ]);
+
+  const scopeItemIds = (scopeItemsRes.data ?? []).map((r) => r.id);
+  const totalScopeItems = scopeItemIds.length;
+
+  const { data: assessments } = scopeItemIds.length
+    ? await supabase.from("igp_assessments").select("igp_code, status").in("scope_item_id", scopeItemIds)
+    : { data: [] as { igp_code: string; status: string }[] };
+
+  const countsByIgp = new Map<string, { achieved: number; partial: number; not: number; notApplicable: number }>();
+  for (const row of assessments ?? []) {
+    const c = countsByIgp.get(row.igp_code) ?? { achieved: 0, partial: 0, not: 0, notApplicable: 0 };
+    if (row.status === "achieved") c.achieved++;
+    else if (row.status === "partial") c.partial++;
+    else if (row.status === "not") c.not++;
+    else if (row.status === "not_applicable") c.notApplicable++;
+    countsByIgp.set(row.igp_code, c);
+  }
+
+  const sections = (sectionsRes.data ?? []).map((sec) => ({
+    code: sec.code,
+    name: sec.name,
+    outcomes: (igpsRes.data ?? [])
+      .filter((igp) => igp.section_code === sec.code)
+      .map((igp) => {
+        const c = countsByIgp.get(igp.code) ?? { achieved: 0, partial: 0, not: 0, notApplicable: 0 };
+        // Same "no row = Not started" convention used throughout this
+        // app (e.g. getScopeItemAssessment) — a missing igp_assessments
+        // row for a scope item counts as none/not-started, not omitted.
+        const none = totalScopeItems - c.achieved - c.partial - c.not - c.notApplicable;
+        return {
+          code: igp.code,
+          name: igp.name,
+          achieved: c.achieved,
+          partial: c.partial,
+          not: c.not,
+          none,
+          notApplicable: c.notApplicable,
+        };
+      }),
+  }));
+
+  return {
+    totalScopeItems,
+    generatedAt: formatDateTime(new Date().toISOString()),
+    sections,
+  };
 }
 
 export async function getEvidenceLibrary(

@@ -949,3 +949,27 @@ tr:last-child td {
   margin: 0 0 18px 0;
   word-break: break-all;
 }
+
+/* PRINT (used by /report's Print/Save-as-PDF button, and anywhere else
+   a .no-print / .print-only pairing is useful later) */
+.print-only {
+  display: none;
+}
+@media print {
+  .sidebar,
+  .topbar,
+  .announcement-banner,
+  .notification-strip,
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block;
+  }
+  body {
+    background: #fff;
+  }
+  table {
+    page-break-inside: avoid;
+  }
+}

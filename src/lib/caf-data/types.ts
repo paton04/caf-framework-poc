@@ -157,18 +157,37 @@ export interface Section {
   principles: Igp[];
 }
 
-export type ScopeItemType = "Environment" | "Application" | "Other";
+// Was a fixed union; now an admin-managed list (configurable_lists,
+// list_name 'scope_item_type' — see 0024_configurable_lists.sql), so
+// it's just a string a scope item happens to hold, not a closed set
+// TypeScript can check membership of.
+export type ScopeItemType = string;
 export type ScopeCriticality = "Tier 1" | "Tier 2" | "Tier 3";
 
-export const scopeItemTypes: ScopeItemType[] = ["Environment", "Application", "Other"];
 export const scopeCriticalities: ScopeCriticality[] = ["Tier 1", "Tier 2", "Tier 3"];
+
+// One entry in an admin-managed reference list (configurable_lists).
+// `removed` is a soft-delete flag, never an actual row delete — a
+// scope item already holding a removed value keeps it verbatim; the
+// UI just stops offering it for new selections and marks it
+// "(removed)" wherever it's still shown.
+export interface ConfigurableListItem {
+  value: string;
+  removed: boolean;
+}
 
 export interface ScopeItem {
   id: string;
   name: string;
   type: ScopeItemType;
+  // True if `type` no longer appears (or appears removed) in the
+  // current scope_item_type list — computed server-side at fetch time
+  // so display components don't each need the whole list just to know
+  // this.
+  typeRemoved: boolean;
   description: string;
   essentialFunction: string;
+  essentialFunctionRemoved: boolean;
   criticality: ScopeCriticality;
   owner: string;
   ownerId: string | null;

@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { AdminPanel } from "@/components/AdminPanel";
 import { AnnouncementForm } from "@/components/AnnouncementForm";
+import { ConfigurableListEditor } from "@/components/ConfigurableListEditor";
 import {
   getAllIgpCodes,
   getAnnouncement,
   getAuditLog,
+  getConfigurableList,
   getProfilesWithRoles,
   getSuppliers,
 } from "@/lib/caf-data/queries";
@@ -20,14 +22,17 @@ export default async function AdminPage() {
   // User statuses needs the service_role key (SUPABASE_SERVICE_ROLE_KEY)
   // — not set up yet on a fresh environment, so this degrades to "no
   // status known" rather than breaking the whole page if it's missing.
-  const [profiles, igps, suppliers, auditLog, announcement, userStatuses] = await Promise.all([
-    getProfilesWithRoles(supabase),
-    getAllIgpCodes(supabase),
-    getSuppliers(supabase),
-    getAuditLog(supabase),
-    getAnnouncement(supabase),
-    getAdminUserStatuses().catch(() => null),
-  ]);
+  const [profiles, igps, suppliers, auditLog, announcement, userStatuses, scopeItemTypes, essentialFunctions] =
+    await Promise.all([
+      getProfilesWithRoles(supabase),
+      getAllIgpCodes(supabase),
+      getSuppliers(supabase),
+      getAuditLog(supabase),
+      getAnnouncement(supabase),
+      getAdminUserStatuses().catch(() => null),
+      getConfigurableList(supabase, "scope_item_type"),
+      getConfigurableList(supabase, "essential_function"),
+    ]);
 
   const supplierAccess = Object.fromEntries(suppliers.map((s) => [s.userId, s.igpCodes]));
 
@@ -46,6 +51,25 @@ export default async function AdminPage() {
         userStatuses={userStatuses}
         currentUserId={user?.id ?? null}
       />
+
+      <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
+        Scope item options
+      </h2>
+      <p className="page-sub">
+        What&apos;s offered on a scope item&apos;s Type and Essential
+        function fields. Removing a value doesn&apos;t touch any scope
+        item already using it — it just stops being offered for new
+        ones, and shows marked &quot;(removed)&quot; wherever it&apos;s
+        still in use.
+      </p>
+      <div style={{ display: "flex", gap: 32, flexWrap: "wrap", marginBottom: 20 }}>
+        <ConfigurableListEditor listName="scope_item_type" label="Types" items={scopeItemTypes} />
+        <ConfigurableListEditor
+          listName="essential_function"
+          label="Essential functions"
+          items={essentialFunctions}
+        />
+      </div>
 
       <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
         Announcement

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ScopeItemList } from "@/components/ScopeItemList";
 import { SupplierIgpList } from "@/components/SupplierIgpList";
 import {
+  getConfigurableList,
   getInternalUsers,
   getScopeItemProgress,
   getScopeItems,
@@ -48,9 +49,11 @@ export default async function ScopeItemsPage() {
   }
 
   const supabase = await createClient();
-  const [scopeItems, internalUsers] = await Promise.all([
+  const [scopeItems, internalUsers, types, essentialFunctions] = await Promise.all([
     getScopeItems(supabase),
     getInternalUsers(supabase),
+    getConfigurableList(supabase, "scope_item_type"),
+    getConfigurableList(supabase, "essential_function"),
   ]);
   const progress = await getScopeItemProgress(
     supabase,
@@ -68,6 +71,8 @@ export default async function ScopeItemsPage() {
         items={scopeItems}
         internalUsers={internalUsers}
         progress={Object.fromEntries(progress)}
+        types={types}
+        essentialFunctions={essentialFunctions}
       />
     </>
   );

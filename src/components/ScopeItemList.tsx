@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ScopeItemPanel } from "@/components/ScopeItemPanel";
 import { createScopeItem, type ScopeItemInput } from "@/app/actions/scope";
-import type { ScopeItem, ScopeItemProgress } from "@/lib/caf-data/types";
+import type { ConfigurableListItem, ScopeItem, ScopeItemProgress } from "@/lib/caf-data/types";
 
 // Small non-zero-only counts, reusing the same status colours as the
 // heatmap's own progress strip — e.g. "5 Achieved  2 Partial  9 Not started".
@@ -40,10 +40,14 @@ export function ScopeItemList({
   items,
   internalUsers,
   progress,
+  types,
+  essentialFunctions,
 }: {
   items: ScopeItem[];
   internalUsers: { id: string; email: string }[];
   progress: Record<string, ScopeItemProgress>;
+  types: ConfigurableListItem[];
+  essentialFunctions: ConfigurableListItem[];
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -109,7 +113,10 @@ export function ScopeItemList({
                 </Link>
               </td>
               <td className="row-link-cell">
-                <Link href={`/scope/${item.id}`}>{item.type}</Link>
+                <Link href={`/scope/${item.id}`}>
+                  {item.type}
+                  {item.typeRemoved && <span className="fmeta"> (removed)</span>}
+                </Link>
               </td>
               <td className="row-link-cell">
                 <Link href={`/scope/${item.id}`}>{item.essentialFunction}</Link>
@@ -139,6 +146,8 @@ export function ScopeItemList({
         pending={isPending}
         error={error}
         internalUsers={internalUsers}
+        types={types}
+        essentialFunctions={essentialFunctions}
         onClose={() => setAdding(false)}
         onSave={handleSave}
         onDelete={() => {}}

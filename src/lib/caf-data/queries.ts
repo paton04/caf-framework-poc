@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   AuditLogEntry,
+  ConfigurableListItem,
   EvidenceFile,
   EvidenceLibraryRow,
   Igp,
@@ -150,6 +151,36 @@ interface StatementCommentRow {
 async function getEnterpriseScopeItemId(supabase: SupabaseClient): Promise<string | null> {
   const { data } = await supabase.from("scope_items").select("id").eq("is_enterprise", true).maybeSingle();
   return data?.id ?? null;
+}
+
+/** Every value (active and removed) in an admin-managed reference list
+ * (configurable_lists — see 0024_configurable_lists.sql), ordered for
+ * display. Used both for the Admin page's management UI (shows
+ * everything) and, filtered to `!removed`, for choosing a value on a
+ * scope item. */
+export async function getConfigurableList(
+  supabase: SupabaseClient,
+  listName: string
+): Promise<ConfigurableListItem[]> {
+  const { data } = await supabase
+    .from("configurable_lists")
+    .select("value, removed_at")
+    .eq("list_name", listName)
+    .order("sort_order");
+  return (data ?? []).map((row) => ({ value: row.value, removed: row.removed_at !== null }));
+}
+
+/** Just the removed values for a list, as a Set — cheap way for
+ * getScopeItems/getScopeItemAssessment to flag a scope item's
+ * type/essential_function as "(removed)" without needing the whole
+ * list's sort order or active values. */
+async function getRemovedListValues(supabase: SupabaseClient, listName: string): Promise<Set<string>> {
+  const { data } = await supabase
+    .from("configurable_lists")
+    .select("value")
+    .eq("list_name", listName)
+    .not("removed_at", "is", null);
+  return new Set((data ?? []).map((row) => row.value));
 }
 
 /**
@@ -304,28 +335,31 @@ export async function getScopeItemAssessment(
   supabase: SupabaseClient,
   scopeItemId: string
 ): Promise<ScopeItemAssessment | null> {
-  const [scopeItemRes, sectionsRes, igpsRes, assessmentsRes, evidenceRes, statementsByIgp] = await Promise.all([
-    supabase
-      .from("scope_items")
-      .select("id, name, type, description, essential_function, criticality, owner, owner_id, is_enterprise")
-      .eq("id", scopeItemId)
-      .maybeSingle(),
-    supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
-    supabase
-      .from("caf_igps")
-      .select("code, section_code, name, sort_order, guidance, guidance_note")
-      .order("sort_order"),
-    supabase
-      .from("igp_assessments")
-      .select("igp_code, status, narrative, owner, owner_id")
-      .eq("scope_item_id", scopeItemId),
-    supabase
-      .from("evidence_files")
-      .select(EVIDENCE_COLUMNS)
-      .eq("scope_item_id", scopeItemId)
-      .order("uploaded_at", { ascending: false }),
-    getStatementsByIgp(supabase, scopeItemId),
-  ]);
+  const [scopeItemRes, sectionsRes, igpsRes, assessmentsRes, evidenceRes, statementsByIgp, removedTypes, removedFunctions] =
+    await Promise.all([
+      supabase
+        .from("scope_items")
+        .select("id, name, type, description, essential_function, criticality, owner, owner_id, is_enterprise")
+        .eq("id", scopeItemId)
+        .maybeSingle(),
+      supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
+      supabase
+        .from("caf_igps")
+        .select("code, section_code, name, sort_order, guidance, guidance_note")
+        .order("sort_order"),
+      supabase
+        .from("igp_assessments")
+        .select("igp_code, status, narrative, owner, owner_id")
+        .eq("scope_item_id", scopeItemId),
+      supabase
+        .from("evidence_files")
+        .select(EVIDENCE_COLUMNS)
+        .eq("scope_item_id", scopeItemId)
+        .order("uploaded_at", { ascending: false }),
+      getStatementsByIgp(supabase, scopeItemId),
+      getRemovedListValues(supabase, "scope_item_type"),
+      getRemovedListValues(supabase, "essential_function"),
+    ]);
 
   if (!scopeItemRes.data) return null;
 
@@ -379,8 +413,10 @@ export async function getScopeItemAssessment(
     id: sir.id,
     name: sir.name,
     type: sir.type,
+    typeRemoved: removedTypes.has(sir.type),
     description: sir.description,
     essentialFunction: sir.essential_function,
+    essentialFunctionRemoved: removedFunctions.has(sir.essential_function),
     criticality: sir.criticality,
     owner: sir.owner,
     ownerId: sir.owner_id,
@@ -474,17 +510,23 @@ export async function getScopeItems(supabase: SupabaseClient): Promise<ScopeItem
     .order("created_at");
 
   const rows = data ?? [];
-  const ownerEmailById = await getEmailsByUserId(
-    supabase,
-    rows.map((r) => r.owner_id)
-  );
+  const [ownerEmailById, removedTypes, removedFunctions] = await Promise.all([
+    getEmailsByUserId(
+      supabase,
+      rows.map((r) => r.owner_id)
+    ),
+    getRemovedListValues(supabase, "scope_item_type"),
+    getRemovedListValues(supabase, "essential_function"),
+  ]);
 
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     type: row.type,
+    typeRemoved: removedTypes.has(row.type),
     description: row.description,
     essentialFunction: row.essential_function,
+    essentialFunctionRemoved: removedFunctions.has(row.essential_function),
     criticality: row.criticality,
     owner: row.owner,
     ownerId: row.owner_id,

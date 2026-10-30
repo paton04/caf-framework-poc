@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   scopeCriticalities,
-  scopeItemTypes,
+  type ConfigurableListItem,
   type ScopeItem,
 } from "@/lib/caf-data/types";
 import type { ScopeItemInput } from "@/app/actions/scope";
@@ -17,14 +17,29 @@ interface ScopeItemPanelProps {
   pending: boolean;
   error: string | null;
   internalUsers: { id: string; email: string }[];
+  // Admin-managed lists (configurable_lists — see Admin page) rather
+  // than fixed options. Active (non-removed) values plus, when editing
+  // an item whose current value has since been removed from the list,
+  // that value too — otherwise opening the form would silently show a
+  // different selection than what's actually saved.
+  types: ConfigurableListItem[];
+  essentialFunctions: ConfigurableListItem[];
   onClose: () => void;
   onSave: (input: ScopeItemInput) => void;
   onDelete: () => void;
 }
 
+function selectableOptions(list: ConfigurableListItem[], current: string, currentRemoved: boolean): string[] {
+  const active = list.filter((i) => !i.removed).map((i) => i.value);
+  if (current && currentRemoved && !active.includes(current)) return [...active, current];
+  return active;
+}
+
 const BLANK: ScopeItemInput = {
   name: "",
-  type: "Environment",
+  // No hardcoded default any more — Types are admin-managed now (see
+  // Admin page), picked explicitly rather than assumed.
+  type: "",
   description: "",
   essentialFunction: "",
   criticality: "Tier 3",
@@ -49,6 +64,8 @@ export function ScopeItemPanel({
   pending,
   error,
   internalUsers,
+  types,
+  essentialFunctions,
   onClose,
   onSave,
   onDelete,
@@ -109,8 +126,16 @@ export function ScopeItemPanel({
 
               <div className="field">
                 <label>Type</label>
+                <p className="field-hint">
+                  Managed on the Admin page — add or remove options
+                  there.
+                </p>
                 <div className="status-select">
-                  {scopeItemTypes.map((t) => (
+                  {selectableOptions(
+                    types,
+                    isEditing ? (target as ScopeItem).type : "",
+                    isEditing ? (target as ScopeItem).typeRemoved : false
+                  ).map((t) => (
                     <button
                       key={t}
                       type="button"
@@ -118,6 +143,9 @@ export function ScopeItemPanel({
                       onClick={() => update("type", t)}
                     >
                       {t}
+                      {isEditing && (target as ScopeItem).typeRemoved && (target as ScopeItem).type === t
+                        ? " (removed)"
+                        : ""}
                     </button>
                   ))}
                 </div>
@@ -137,15 +165,31 @@ export function ScopeItemPanel({
                 <label>Essential function</label>
                 <p className="field-hint">
                   The business-critical activity this depends on (e.g. gas
-                  flow control, access control). This is the justification
-                  for why it&apos;s in NIS scope at all.
+                  flow control, access control) — the justification for
+                  why it&apos;s in NIS scope at all. Managed on the Admin
+                  page — add or remove options there.
                 </p>
-                <input
-                  className="narrative-box"
-                  style={{ minHeight: "auto" }}
-                  value={draft.essentialFunction}
-                  onChange={(e) => update("essentialFunction", e.target.value)}
-                />
+                <div className="status-select">
+                  {selectableOptions(
+                    essentialFunctions,
+                    isEditing ? (target as ScopeItem).essentialFunction : "",
+                    isEditing ? (target as ScopeItem).essentialFunctionRemoved : false
+                  ).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      className={`status-opt ${draft.essentialFunction === f ? "sel-neutral" : ""}`}
+                      onClick={() => update("essentialFunction", f)}
+                    >
+                      {f}
+                      {isEditing &&
+                      (target as ScopeItem).essentialFunctionRemoved &&
+                      (target as ScopeItem).essentialFunction === f
+                        ? " (removed)"
+                        : ""}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="field">
@@ -203,7 +247,7 @@ export function ScopeItemPanel({
             <div className="overlay-foot">
               <button
                 className="btn-primary"
-                disabled={pending || !draft.name.trim()}
+                disabled={pending || !draft.name.trim() || !draft.type || !draft.essentialFunction}
                 onClick={() => onSave(draft)}
               >
                 {pending ? "Saving…" : isEditing ? "Save changes" : "Add item"}

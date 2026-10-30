@@ -27,14 +27,22 @@ export async function getAdminUserStatuses(): Promise<Map<string, AdminUserStatu
   const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
   if (error) throw new Error(error.message);
 
-  for (const user of data.users) {
+  // listUsers' bulk response doesn't actually populate `factors` (despite
+  // the type allowing it) — confirmed live, every account showed "No MFA"
+  // even with TOTP enrolled. mfa.listFactors per user is the real source.
+  const factorResults = await Promise.all(
+    data.users.map((user) => admin.auth.admin.mfa.listFactors({ userId: user.id }))
+  );
+
+  data.users.forEach((user, i) => {
+    const factors = factorResults[i].data?.factors ?? [];
     statusById.set(user.id, {
       id: user.id,
       banned: !!user.banned_until && new Date(user.banned_until) > new Date(),
-      mfaEnrolled: (user.factors ?? []).some((f) => f.status === "verified"),
+      mfaEnrolled: factors.some((f) => f.status === "verified"),
       lastSignInAt: user.last_sign_in_at ? formatDateTime(user.last_sign_in_at) : null,
     });
-  }
+  });
 
   return statusById;
 }

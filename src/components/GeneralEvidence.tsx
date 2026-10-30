@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addGeneralEvidence } from "@/app/actions/igp";
+import { EvidenceLink } from "@/components/EvidenceLink";
 import { reviewStatusClass, reviewStatusLabel, type EvidenceFile } from "@/lib/caf-data/types";
 
 // Evidence about this scope item as a whole (a network diagram, an asset
@@ -68,7 +69,7 @@ export function GeneralEvidence({
       {evidence.map((file) => (
         <div className="evidence-item" key={file.id}>
           <div>
-            <div className="fname">{file.name}</div>
+            <EvidenceLink storagePath={file.storagePath}>{file.name}</EvidenceLink>
             {file.description && <div className="fmeta">{file.description}</div>}
           </div>
           <span className={`status ${reviewStatusClass[file.reviewStatus]}`} style={{ marginTop: 0 }}>

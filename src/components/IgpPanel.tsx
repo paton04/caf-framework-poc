@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { EvidenceLink } from "@/components/EvidenceLink";
 import { StatementChecklist } from "@/components/StatementChecklist";
 import {
   type Igp,
@@ -165,7 +166,7 @@ export function IgpPanel({
                 </p>
                 {igp.evidence.map((file) => (
                   <div className="evidence-item" key={file.id}>
-                    <span className="fname">{file.name}</span>
+                    <EvidenceLink storagePath={file.storagePath}>{file.name}</EvidenceLink>
                     <span className={`status ${reviewStatusClass[file.reviewStatus]}`} style={{ marginTop: 0 }}>
                       {reviewStatusLabel[file.reviewStatus]}
                     </span>

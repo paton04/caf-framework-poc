@@ -592,6 +592,7 @@ export async function getEvidenceLibrary(
     return {
       id: evidence.id,
       file: evidence.name,
+      storagePath: evidence.storagePath,
       linkedIgp: row.igp_code,
       description: evidence.description,
       scopeItemName: row.scope_item_id ? (scopeItemNameById.get(row.scope_item_id) ?? null) : null,

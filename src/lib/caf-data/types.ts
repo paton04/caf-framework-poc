@@ -213,6 +213,7 @@ export interface ScopeItemProgress {
 export interface EvidenceLibraryRow {
   id: string;
   file: string;
+  storagePath: string;
   // Null for general scope-item evidence (not tied to one indicator).
   linkedIgp: string | null;
   description: string | null;

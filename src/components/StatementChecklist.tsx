@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { EvidenceLink } from "@/components/EvidenceLink";
 import {
   addStatementEvidence,
   postStatementComment,
@@ -224,7 +225,7 @@ function StatementRow({
             {statement.evidence.length === 0 && <p className="fmeta">None yet.</p>}
             {statement.evidence.map((file) => (
               <div className="evidence-item" key={file.id}>
-                <span className="fname">{file.name}</span>
+                <EvidenceLink storagePath={file.storagePath}>{file.name}</EvidenceLink>
                 <span className={`status ${reviewStatusClass[file.reviewStatus]}`} style={{ marginTop: 0 }}>
                   {reviewStatusLabel[file.reviewStatus]}
                 </span>

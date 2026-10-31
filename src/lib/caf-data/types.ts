@@ -375,6 +375,19 @@ export interface ProgressReportSection {
   outcomes: ProgressReportOutcome[];
 }
 
+// One (scope item, outcome) status, for the detailed CSV export — the
+// on-screen report stays a cross-scope summary (that's the board-level
+// view this was rebuilt around), but circulating a copy that can be
+// filtered/pivoted per asset is a different, legitimate need. Excludes
+// the Enterprise-wide scope item, same as the summary.
+export interface ProgressReportDetailRow {
+  sectionCode: string;
+  outcomeCode: string;
+  outcomeName: string;
+  scopeItemName: string;
+  status: IgpStatus;
+}
+
 export interface ProgressReport {
   totalScopeItems: number;
   generatedAt: string; // display date + time

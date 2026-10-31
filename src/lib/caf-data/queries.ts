@@ -7,10 +7,12 @@ import type {
   Igp,
   IgpRequiredLevels,
   IgpStatement,
+  IgpStatus,
   Notification,
   ProfileMetStatus,
   ProfileWithRole,
   ProgressReport,
+  ProgressReportDetailRow,
   RequiredLevel,
   ScopeItem,
   ScopeItemAssessment,
@@ -680,6 +682,49 @@ export async function getProgressReport(supabase: SupabaseClient): Promise<Progr
     bpTargetCount,
     epTargetCount,
   };
+}
+
+// The per-scope-item detail behind getProgressReport's rollup — one row
+// per (scope item, outcome), for the CSV export rather than the
+// on-screen report (which stays the cross-scope board summary). Every
+// outcome × scope item combination is included, even where nothing's
+// been assessed yet ("Not started"), so the export is a complete grid,
+// not just the rows that happen to have a status row in the database.
+export async function getProgressReportDetailRows(supabase: SupabaseClient): Promise<ProgressReportDetailRow[]> {
+  const [igpsRes, scopeItemsRes] = await Promise.all([
+    supabase.from("caf_igps").select("code, section_code, name, sort_order").order("sort_order"),
+    supabase.from("scope_items").select("id, name").eq("is_enterprise", false).order("name"),
+  ]);
+
+  const scopeItems = scopeItemsRes.data ?? [];
+  const scopeItemIds = scopeItems.map((s) => s.id);
+
+  const { data: assessments } = scopeItemIds.length
+    ? await supabase
+        .from("igp_assessments")
+        .select("scope_item_id, igp_code, status")
+        .in("scope_item_id", scopeItemIds)
+    : { data: [] as { scope_item_id: string; igp_code: string; status: IgpStatus }[] };
+
+  const statusByKey = new Map<string, IgpStatus>();
+  for (const row of assessments ?? []) {
+    statusByKey.set(`${row.scope_item_id}:${row.igp_code}`, row.status as IgpStatus);
+  }
+
+  const rows: ProgressReportDetailRow[] = [];
+  for (const igp of igpsRes.data ?? []) {
+    for (const item of scopeItems) {
+      rows.push({
+        sectionCode: igp.section_code,
+        outcomeCode: igp.code,
+        outcomeName: igp.name,
+        scopeItemName: item.name,
+        // Same "no row = Not started" convention as getProgressReport.
+        status: statusByKey.get(`${item.id}:${igp.code}`) ?? "none",
+      });
+    }
+  }
+  return rows;
 }
 
 export async function getEvidenceLibrary(

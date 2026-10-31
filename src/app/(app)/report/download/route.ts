@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
-import { getProgressReport } from "@/lib/caf-data/queries";
-import { profileMetStatusLabel } from "@/lib/caf-data/types";
+import { getProgressReport, getProgressReportDetailRows } from "@/lib/caf-data/queries";
+import { profileMetStatusLabel, statusLabel } from "@/lib/caf-data/types";
 
 // Same role gate as the report page itself (owner_admin/grc) — this
 // route doesn't go through that page's own redirect, so it needs its
@@ -17,9 +17,13 @@ export async function GET() {
   }
 
   const supabase = await createClient();
-  const report = await getProgressReport(supabase);
+  const [report, detailRows] = await Promise.all([
+    getProgressReport(supabase),
+    getProgressReportDetailRows(supabase),
+  ]);
 
   const rows: string[][] = [
+    ["Summary — rolled up across all scope items"],
     [
       "Section",
       "Code",
@@ -48,6 +52,11 @@ export async function GET() {
         String(o.notApplicable),
       ]);
     }
+  }
+
+  rows.push([], ["Detail — status by individual scope item"], ["Section", "Code", "Outcome", "Scope item", "Status"]);
+  for (const d of detailRows) {
+    rows.push([d.sectionCode, d.outcomeCode, d.outcomeName, d.scopeItemName, statusLabel[d.status]]);
   }
 
   const csv = rows.map((r) => r.map(csvField).join(",")).join("\r\n");

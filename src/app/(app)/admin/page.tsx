@@ -90,12 +90,13 @@ export default async function AdminPage() {
         BP/EP required levels
       </h2>
       <p className="page-sub">
-        What level each outcome must reach to count as meeting Basic
-        Profile or Enhanced Profile — set by the regulator, not the
-        assessor. Currently a uniform placeholder, not real published
-        Ofgem/DESNZ values (those aren&apos;t public — DESNZ shares the
-        equivalent table directly with regulated entities). Update these
-        once the real figures are confirmed.
+        BP (Basic Profile) and EP (Enhanced Profile) are Ofgem/DESNZ&apos;s
+        two CAF attainment tiers for the DGE sector. What level each
+        outcome must reach to count as meeting BP or EP — set by the
+        regulator, not the assessor. Currently a uniform placeholder, not
+        real published Ofgem/DESNZ values (those aren&apos;t public —
+        DESNZ shares the equivalent table directly with regulated
+        entities). Update these once the real figures are confirmed.
       </p>
       <RequiredLevelsEditor outcomes={requiredLevels} sections={sections} />
 

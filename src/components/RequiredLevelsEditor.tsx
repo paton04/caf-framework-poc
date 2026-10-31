@@ -63,8 +63,8 @@ export function RequiredLevelsEditor({
                 <tr>
                   <th>Code</th>
                   <th>Outcome</th>
-                  <th>Required for Basic Profile</th>
-                  <th>Required for Enhanced Profile</th>
+                  <th>BP required level</th>
+                  <th>EP required level</th>
                 </tr>
               </thead>
               <tbody>
@@ -74,7 +74,7 @@ export function RequiredLevelsEditor({
                     <td>{o.name}</td>
                     <td>
                       <select
-                        aria-label={`${o.code} required level for Basic Profile`}
+                        aria-label={`${o.code} required level for BP (Basic Profile)`}
                         value={o.bpRequiredLevel ?? "achieved"}
                         disabled={isPending}
                         onChange={(e) => handleChange(o, "bp", e.target.value as RequiredLevel)}
@@ -88,7 +88,7 @@ export function RequiredLevelsEditor({
                     </td>
                     <td>
                       <select
-                        aria-label={`${o.code} required level for Enhanced Profile`}
+                        aria-label={`${o.code} required level for EP (Enhanced Profile)`}
                         value={o.epRequiredLevel ?? "achieved"}
                         disabled={isPending}
                         onChange={(e) => handleChange(o, "ep", e.target.value as RequiredLevel)}

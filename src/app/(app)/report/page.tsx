@@ -85,21 +85,19 @@ export default async function ReportPage() {
       </div>
 
       <div className="meta-row">
-        <span className="meta-pill">
-          Basic Profile: {report.bpMetCount} of {report.bpTargetCount} outcomes met
-        </span>
-        <span className="meta-pill">
-          Enhanced Profile: {report.epMetCount} of {report.epTargetCount} outcomes met
-        </span>
+        <span className="meta-pill">BP: {report.bpMetCount} of {report.bpTargetCount} outcomes met</span>
+        <span className="meta-pill">EP: {report.epMetCount} of {report.epTargetCount} outcomes met</span>
       </div>
 
       <div className="banner">
-        Required levels are currently an indicative placeholder, not
-        confirmed Ofgem/DESNZ figures — real per-outcome targets aren&apos;t
-        publicly published and haven&apos;t yet been confirmed with Ofgem
-        directly. A &quot;Not met&quot; here may reflect that placeholder
-        rather than a real compliance gap. Adjust required levels under
-        Admin once confirmed.
+        BP (Basic Profile) and EP (Enhanced Profile) are Ofgem/DESNZ&apos;s
+        two CAF attainment tiers for the DGE sector. Required levels are
+        currently an indicative placeholder, not confirmed Ofgem/DESNZ
+        figures — real per-outcome targets aren&apos;t publicly published
+        and haven&apos;t yet been confirmed with Ofgem directly. A
+        &quot;Not met&quot; here may reflect that placeholder rather than
+        a real compliance gap. Adjust required levels under Admin once
+        confirmed.
       </div>
 
       {report.sections.map((sec) => (
@@ -112,8 +110,8 @@ export default async function ReportPage() {
               <tr>
                 <th>Code</th>
                 <th>Outcome</th>
-                <th>Basic Profile</th>
-                <th>Enhanced Profile</th>
+                <th>BP</th>
+                <th>EP</th>
               </tr>
             </thead>
             <tbody>

@@ -19,9 +19,28 @@ export const metadata: Metadata = {
   description: "CAF/NIS compliance evidence tracking trial.",
 };
 
+// Runs before paint so a saved dark-mode choice doesn't flash light
+// first — can't wait for React to hydrate for this one. Reads the same
+// localStorage key ThemeToggle writes; no explicit choice yet means no
+// attribute at all, which leaves the CSS's prefers-color-scheme media
+// query in charge (see globals.css).
+const themeInitScript = `
+(function () {
+  try {
+    var t = localStorage.getItem("caf-theme");
+    if (t === "dark" || t === "light") {
+      document.documentElement.setAttribute("data-theme", t);
+    }
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

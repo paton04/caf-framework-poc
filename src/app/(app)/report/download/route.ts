@@ -54,9 +54,9 @@ export async function GET() {
     }
   }
 
-  rows.push([], ["Detail — status by individual scope item"], ["Section", "Code", "Outcome", "Scope item", "Status"]);
+  rows.push([], ["Detail — status by individual scope item"], ["Scope item", "Section", "Code", "Outcome", "Status"]);
   for (const d of detailRows) {
-    rows.push([d.sectionCode, d.outcomeCode, d.outcomeName, d.scopeItemName, statusLabel[d.status]]);
+    rows.push([d.scopeItemName, d.sectionCode, d.outcomeCode, d.outcomeName, statusLabel[d.status]]);
   }
 
   const csv = rows.map((r) => r.map(csvField).join(",")).join("\r\n");

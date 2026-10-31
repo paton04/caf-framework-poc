@@ -690,6 +690,13 @@ export async function getProgressReport(supabase: SupabaseClient): Promise<Progr
 // outcome × scope item combination is included, even where nothing's
 // been assessed yet ("Not started"), so the export is a complete grid,
 // not just the rows that happen to have a status row in the database.
+//
+// Ordered scope-item-first (not outcome-first): the summary above this
+// in the CSV is already outcome-first, so repeating that axis here would
+// just explode each summary row into its scope items without adding a
+// new view. Grouping by scope item instead answers the question the
+// summary can't — "how's this one asset doing overall" — and matches
+// how the rest of the app organises around scope items.
 export async function getProgressReportDetailRows(supabase: SupabaseClient): Promise<ProgressReportDetailRow[]> {
   const [igpsRes, scopeItemsRes] = await Promise.all([
     supabase.from("caf_igps").select("code, section_code, name, sort_order").order("sort_order"),
@@ -711,9 +718,10 @@ export async function getProgressReportDetailRows(supabase: SupabaseClient): Pro
     statusByKey.set(`${row.scope_item_id}:${row.igp_code}`, row.status as IgpStatus);
   }
 
+  const igps = igpsRes.data ?? [];
   const rows: ProgressReportDetailRow[] = [];
-  for (const igp of igpsRes.data ?? []) {
-    for (const item of scopeItems) {
+  for (const item of scopeItems) {
+    for (const igp of igps) {
       rows.push({
         sectionCode: igp.section_code,
         outcomeCode: igp.code,

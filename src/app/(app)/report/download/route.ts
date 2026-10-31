@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 import { getProgressReport } from "@/lib/caf-data/queries";
+import { profileMetStatusLabel } from "@/lib/caf-data/types";
 
 // Same role gate as the report page itself (owner_admin/grc) — this
 // route doesn't go through that page's own redirect, so it needs its
@@ -19,7 +20,18 @@ export async function GET() {
   const report = await getProgressReport(supabase);
 
   const rows: string[][] = [
-    ["Section", "Code", "Outcome", "Achieved", "Partially achieved", "Not achieved", "Not started", "Not applicable"],
+    [
+      "Section",
+      "Code",
+      "Outcome",
+      "Basic Profile status",
+      "Enhanced Profile status",
+      "Achieved",
+      "Partially achieved",
+      "Not achieved",
+      "Not started",
+      "Not applicable",
+    ],
   ];
   for (const sec of report.sections) {
     for (const o of sec.outcomes) {
@@ -27,6 +39,8 @@ export async function GET() {
         sec.code,
         o.code,
         o.name,
+        profileMetStatusLabel[o.bpStatus],
+        profileMetStatusLabel[o.epStatus],
         String(o.achieved),
         String(o.partial),
         String(o.not),

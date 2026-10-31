@@ -332,6 +332,29 @@ export interface SnapshotDetail extends SnapshotSummary {
 // Deliberately excludes the Enterprise-wide scope item (it's a policy
 // bucket, not a system — counting it alongside real scope items would
 // misrepresent "how many of our systems are compliant").
+// Whether the organisation's current attainment for an outcome, rolled
+// up across every in-scope scope item, clears the required level for a
+// given profile (Basic/Enhanced) — see getProgressReport. "not_applicable"
+// means the profile doesn't set a target for this outcome at all (the
+// required level itself is not_applicable); "no_data" means every
+// scope item is either unassessed or marked not-applicable for this
+// outcome, so there's nothing to judge yet.
+export type ProfileMetStatus = "met" | "not_met" | "not_applicable" | "no_data";
+
+export const profileMetStatusLabel: Record<ProfileMetStatus, string> = {
+  met: "Met",
+  not_met: "Not met",
+  not_applicable: "N/A",
+  no_data: "Not yet assessed",
+};
+
+export const profileMetStatusClass: Record<ProfileMetStatus, string> = {
+  met: "st-achieved",
+  not_met: "st-not",
+  not_applicable: "st-none",
+  no_data: "st-none",
+};
+
 export interface ProgressReportOutcome {
   code: string;
   name: string;
@@ -340,6 +363,10 @@ export interface ProgressReportOutcome {
   not: number;
   none: number;
   notApplicable: number;
+  bpRequiredLevel: RequiredLevel | null;
+  epRequiredLevel: RequiredLevel | null;
+  bpStatus: ProfileMetStatus;
+  epStatus: ProfileMetStatus;
 }
 
 export interface ProgressReportSection {
@@ -352,4 +379,10 @@ export interface ProgressReport {
   totalScopeItems: number;
   generatedAt: string; // display date + time
   sections: ProgressReportSection[];
+  bpMetCount: number;
+  epMetCount: number;
+  // Outcomes whose required level isn't "not_applicable" for that
+  // profile — i.e. the denominator a Met count is really out of.
+  bpTargetCount: number;
+  epTargetCount: number;
 }

@@ -8,8 +8,10 @@ import type {
   IgpRequiredLevels,
   IgpStatement,
   Notification,
+  ProfileMetStatus,
   ProfileWithRole,
   ProgressReport,
+  RequiredLevel,
   ScopeItem,
   ScopeItemAssessment,
   ScopeItemProgress,
@@ -581,10 +583,30 @@ export async function getScopeItemProgress(
  * this one scope item doing overall". Excludes the Enterprise-wide
  * scope item deliberately (see ProgressReport's own comment in types.ts).
  */
+// Whether the org's rolled-up attainment for one outcome clears a
+// profile's required level — "met" needs EVERY applicable scope item
+// (i.e. not itself marked not_applicable for this outcome) to reach at
+// least that level. A null required level means it hasn't been set yet
+// (see RequiredLevelsEditor) rather than a deliberate "no target".
+function computeProfileStatus(
+  requiredLevel: RequiredLevel | null,
+  c: { achieved: number; partial: number; not: number; notApplicable: number },
+  totalScopeItems: number
+): ProfileMetStatus {
+  if (requiredLevel === "not_applicable") return "not_applicable";
+  const applicable = totalScopeItems - c.notApplicable;
+  if (!requiredLevel || applicable <= 0) return "no_data";
+  if (requiredLevel === "achieved") return c.achieved === applicable ? "met" : "not_met";
+  return c.achieved + c.partial === applicable ? "met" : "not_met";
+}
+
 export async function getProgressReport(supabase: SupabaseClient): Promise<ProgressReport> {
   const [sectionsRes, igpsRes, scopeItemsRes] = await Promise.all([
     supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
-    supabase.from("caf_igps").select("code, section_code, name, sort_order").order("sort_order"),
+    supabase
+      .from("caf_igps")
+      .select("code, section_code, name, sort_order, bp_required_level, ep_required_level")
+      .order("sort_order"),
     supabase.from("scope_items").select("id").eq("is_enterprise", false),
   ]);
 
@@ -605,6 +627,11 @@ export async function getProgressReport(supabase: SupabaseClient): Promise<Progr
     countsByIgp.set(row.igp_code, c);
   }
 
+  let bpMetCount = 0;
+  let epMetCount = 0;
+  let bpTargetCount = 0;
+  let epTargetCount = 0;
+
   const sections = (sectionsRes.data ?? []).map((sec) => ({
     code: sec.code,
     name: sec.name,
@@ -616,6 +643,18 @@ export async function getProgressReport(supabase: SupabaseClient): Promise<Progr
         // app (e.g. getScopeItemAssessment) — a missing igp_assessments
         // row for a scope item counts as none/not-started, not omitted.
         const none = totalScopeItems - c.achieved - c.partial - c.not - c.notApplicable;
+        const bpRequiredLevel = igp.bp_required_level as RequiredLevel | null;
+        const epRequiredLevel = igp.ep_required_level as RequiredLevel | null;
+        const bpStatus = computeProfileStatus(bpRequiredLevel, c, totalScopeItems);
+        const epStatus = computeProfileStatus(epRequiredLevel, c, totalScopeItems);
+        if (bpStatus !== "not_applicable") {
+          bpTargetCount++;
+          if (bpStatus === "met") bpMetCount++;
+        }
+        if (epStatus !== "not_applicable") {
+          epTargetCount++;
+          if (epStatus === "met") epMetCount++;
+        }
         return {
           code: igp.code,
           name: igp.name,
@@ -624,6 +663,10 @@ export async function getProgressReport(supabase: SupabaseClient): Promise<Progr
           not: c.not,
           none,
           notApplicable: c.notApplicable,
+          bpRequiredLevel,
+          epRequiredLevel,
+          bpStatus,
+          epStatus,
         };
       }),
   }));
@@ -632,6 +675,10 @@ export async function getProgressReport(supabase: SupabaseClient): Promise<Progr
     totalScopeItems,
     generatedAt: formatDateTime(new Date().toISOString()),
     sections,
+    bpMetCount,
+    epMetCount,
+    bpTargetCount,
+    epTargetCount,
   };
 }
 

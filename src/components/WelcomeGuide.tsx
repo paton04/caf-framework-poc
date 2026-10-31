@@ -120,7 +120,7 @@ export function WelcomeGuide({ role }: { role: UserRole | null }) {
   return (
     <>
       <button type="button" className="link-btn" onClick={openManually}>
-        Guide
+        Tour
       </button>
       {open && <div className="overlay-backdrop" onClick={close} />}
       <div className={`overlay ${open ? "open" : ""}`} style={{ width: 520 }}>

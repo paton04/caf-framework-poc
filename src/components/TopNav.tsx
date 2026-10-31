@@ -43,7 +43,7 @@ function isActive(pathname: string, href: string) {
 
 export function TopNav({ role, email }: { role: UserRole | null; email: string | null }) {
   const pathname = usePathname();
-  const navItems =
+  const roleNav =
     role === "owner_admin"
       ? [...INTERNAL_NAV, { href: "/report", label: "Report" }, { href: "/admin", label: "Admin" }]
       : role === "contributor"
@@ -53,6 +53,10 @@ export function TopNav({ role, email }: { role: UserRole | null; email: string |
           : role === "grc"
             ? GRC_NAV
             : UNASSIGNED_NAV;
+  // Every role gets the User Guide link — it's the one page that's
+  // useful regardless of role, so it isn't duplicated into each
+  // role-specific nav list above.
+  const navItems = [...roleNav, { href: "/guide", label: "Guide" }];
 
   return (
     <header className="topnav">

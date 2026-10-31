@@ -1397,6 +1397,8 @@ tr:last-child td {
   .overall-row {
     flex-direction: column;
     align-items: stretch;
+  }
+}
 
 /* PRINT (used by /report's Print/Save-as-PDF button, and anywhere else
    a .no-print / .print-only pairing is useful later) */
@@ -1414,9 +1416,45 @@ tr:last-child td {
     display: block;
   }
   body {
+    /* Printed output should always read as light-mode paper, even if
+       dark mode is active on screen — a light background with --ink
+       still set to a pale dark-mode text color would be illegible. */
     background: #fff;
+    color: #1c2b3a;
   }
   table {
     page-break-inside: avoid;
   }
+}
+
+/* Long-form prose, used by /guide — the rest of the app is forms/
+   tables/cards, this is the one page that's mostly paragraphs. */
+.guide-content h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 32px 0 8px;
+}
+.guide-content h2:first-child {
+  margin-top: 0;
+}
+.guide-content h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 18px 0 6px;
+}
+.guide-content p {
+  margin: 0 0 10px;
+  line-height: 1.6;
+}
+.guide-content ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+.guide-content li {
+  margin-bottom: 4px;
+  line-height: 1.6;
+}
+.guide-content section + section {
+  border-top: 1px solid var(--rule);
+  padding-top: 4px;
 }

@@ -86,19 +86,21 @@ export default async function AdminPage() {
         />
       </div>
 
-      <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
-        BP/EP required levels
-      </h2>
-      <p className="page-sub">
-        BP (Basic Profile) and EP (Enhanced Profile) are Ofgem/DESNZ&apos;s
-        two CAF attainment tiers for the DGE sector. What level each
-        outcome must reach to count as meeting BP or EP — set by the
-        regulator, not the assessor. Currently a uniform placeholder, not
-        real published Ofgem/DESNZ values (those aren&apos;t public —
-        DESNZ shares the equivalent table directly with regulated
-        entities). Update these once the real figures are confirmed.
-      </p>
-      <RequiredLevelsEditor outcomes={requiredLevels} sections={sections} />
+      <div data-tour-id="required-levels">
+        <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
+          BP/EP required levels
+        </h2>
+        <p className="page-sub">
+          BP (Basic Profile) and EP (Enhanced Profile) are Ofgem/DESNZ&apos;s
+          two CAF attainment tiers for the DGE sector. What level each
+          outcome must reach to count as meeting BP or EP — set by the
+          regulator, not the assessor. Currently a uniform placeholder, not
+          real published Ofgem/DESNZ values (those aren&apos;t public —
+          DESNZ shares the equivalent table directly with regulated
+          entities). Update these once the real figures are confirmed.
+        </p>
+        <RequiredLevelsEditor outcomes={requiredLevels} sections={sections} />
+      </div>
 
       <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
         Announcement

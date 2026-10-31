@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
+import { ProductTour } from "@/components/ProductTour";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { WelcomeGuide } from "@/components/WelcomeGuide";
 import type { UserRole } from "@/lib/caf-data/types";
 
 const INTERNAL_NAV = [
@@ -80,7 +80,7 @@ export function TopNav({ role, email }: { role: UserRole | null; email: string |
         <div className="topnav-right">
           <span>Cycle 2026/27</span>
           <span title={email ?? undefined}>{role ? ROLE_LABEL[role] : "No role"}</span>
-          <WelcomeGuide role={role} />
+          <ProductTour role={role} />
           <ThemeToggle />
           <form action={signOut}>
             <button className="link-btn" type="submit">

@@ -66,7 +66,7 @@ export default async function ReportPage() {
             organisation-wide policy status). Generated {report.generatedAt}.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8 }} data-tour-id="report-download">
           <a className="btn-secondary" href="/report/download">
             Download Excel
           </a>
@@ -84,7 +84,7 @@ export default async function ReportPage() {
         </p>
       </div>
 
-      <div className="meta-row">
+      <div className="meta-row" data-tour-id="report-summary">
         <span className="meta-pill">BP: {report.bpMetCount} of {report.bpTargetCount} outcomes met</span>
         <span className="meta-pill">EP: {report.epMetCount} of {report.epTargetCount} outcomes met</span>
       </div>

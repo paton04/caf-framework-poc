@@ -77,7 +77,7 @@ export default async function ScopeItemsPage() {
   const notStarted = regular.filter((s) => progressById[s.id] && progressTotals(progressById[s.id]).assessed === 0);
 
   const summary = (
-    <section aria-labelledby="overall-heading" className="card stack-md">
+    <section aria-labelledby="overall-heading" className="card stack-md" data-tour-id="overall-progress">
       <div className="card-head">
         <h2 id="overall-heading" className="section-heading">
           Overall progress

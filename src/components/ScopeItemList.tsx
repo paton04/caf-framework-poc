@@ -92,6 +92,7 @@ export function ScopeItemList({
         <button
           type="button"
           className="btn-primary"
+          data-tour-id="add-scope-item"
           onClick={() => {
             setError(null);
             setAdding(true);
@@ -103,7 +104,7 @@ export function ScopeItemList({
 
       {summary}
 
-      <section aria-labelledby="items-heading" className="stack-sm">
+      <section aria-labelledby="items-heading" className="stack-sm" data-tour-id="scope-items-list">
         <h2 id="items-heading" className="section-heading">
           Your scope items
         </h2>
@@ -113,7 +114,11 @@ export function ScopeItemList({
         ))}
 
         {enterprise && (
-          <Link href={`/scope/${enterprise.id}`} className="scope-row scope-row-enterprise">
+          <Link
+            href={`/scope/${enterprise.id}`}
+            className="scope-row scope-row-enterprise"
+            data-tour-id="enterprise-row"
+          >
             <div className="scope-row-main">
               <div className="scope-row-name">Organisation-wide defaults</div>
               <div className="scope-row-meta">

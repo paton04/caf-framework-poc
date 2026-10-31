@@ -56,7 +56,7 @@ export function EvidenceLibrary({
 
   return (
     <>
-      <table>
+      <table data-tour-id="evidence-table">
         <thead>
           <tr>
             <th>File</th>

@@ -36,7 +36,7 @@ export function SupplierIgpList({ igps }: { igps: Igp[] }) {
   }
 
   return (
-    <div className="supplier-igp-list">
+    <div className="supplier-igp-list" data-tour-id="supplier-list">
       {igps.map((igp) => (
         <div className="supplier-igp-card" key={igp.id}>
           <div className="pid mono">{igp.id}</div>

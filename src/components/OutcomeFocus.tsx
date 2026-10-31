@@ -155,44 +155,46 @@ export function OutcomeFocus({
           </div>
 
           {outcome.guidance && (
-            <details className="card guidance-details">
+            <details className="card guidance-details" data-tour-id="outcome-guidance">
               <summary>What good looks like</summary>
               <p>{outcome.guidance}</p>
               {outcome.guidanceNote && <p className="guidance-note">{outcome.guidanceNote}</p>}
             </details>
           )}
 
-          {hasStatements ? (
-            <StatementChecklist
-              scopeItemId={scopeItemId}
-              igpCode={outcome.id}
-              statements={outcome.statements}
-              commentableUsers={commentableUsers}
-            />
-          ) : (
-            <section aria-labelledby="status-heading" className="card stack-sm">
-              <h2 id="status-heading" className="section-heading">
-                Status
-              </h2>
-              <p className="muted" style={{ margin: 0 }}>
-                This outcome has no sub-checks yet, so set its status directly.
-              </p>
-              <div className="answer-group" role="group" aria-labelledby="status-heading">
-                {statusOrder.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    aria-pressed={outcome.status === s}
-                    className={`answer-btn ${outcome.status === s ? `sel-${s}` : ""}`}
-                    disabled={isPending}
-                    onClick={() => handleStatusChange(s)}
-                  >
-                    {statusLabel[s]}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
+          <div data-tour-id="sub-checks">
+            {hasStatements ? (
+              <StatementChecklist
+                scopeItemId={scopeItemId}
+                igpCode={outcome.id}
+                statements={outcome.statements}
+                commentableUsers={commentableUsers}
+              />
+            ) : (
+              <section aria-labelledby="status-heading" className="card stack-sm">
+                <h2 id="status-heading" className="section-heading">
+                  Status
+                </h2>
+                <p className="muted" style={{ margin: 0 }}>
+                  This outcome has no sub-checks yet, so set its status directly.
+                </p>
+                <div className="answer-group" role="group" aria-labelledby="status-heading">
+                  {statusOrder.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      aria-pressed={outcome.status === s}
+                      className={`answer-btn ${outcome.status === s ? `sel-${s}` : ""}`}
+                      disabled={isPending}
+                      onClick={() => handleStatusChange(s)}
+                    >
+                      {statusLabel[s]}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
         </div>
 
         <aside className="focus-aside" aria-label="Outcome details">
@@ -236,7 +238,7 @@ export function OutcomeFocus({
             </div>
           </div>
 
-          <div className="card stack-sm">
+          <div className="card stack-sm" data-tour-id="outcome-evidence">
             <h2 className="section-heading">Outcome evidence</h2>
             {outcome.evidence.length === 0 && <p className="fmeta">None yet.</p>}
             {outcome.evidence.map((file) => (

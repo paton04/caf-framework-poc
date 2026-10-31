@@ -194,12 +194,18 @@ export function AdminPanel({ profiles, igps, supplierAccess, userStatuses, curre
             </div>
           </form>
         ) : (
-          <button type="button" className="btn-primary" style={{ marginBottom: 16 }} onClick={() => setInviting(true)}>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ marginBottom: 16 }}
+            data-tour-id="invite-user"
+            onClick={() => setInviting(true)}
+          >
             + Invite user
           </button>
         ))}
 
-      <table>
+      <table data-tour-id="user-table">
         <thead>
           <tr>
             <th>Email</th>

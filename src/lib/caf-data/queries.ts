@@ -5,6 +5,7 @@ import type {
   EvidenceFile,
   EvidenceLibraryRow,
   Igp,
+  IgpRequiredLevels,
   IgpStatement,
   Notification,
   ProfileWithRole,
@@ -793,6 +794,29 @@ export async function getAllIgpCodes(
     .select("code, name, sort_order")
     .order("sort_order");
   return data ?? [];
+}
+
+export async function getSectionNames(supabase: SupabaseClient): Promise<{ code: string; name: string }[]> {
+  const { data } = await supabase.from("caf_sections").select("code, name, sort_order").order("sort_order");
+  return data ?? [];
+}
+
+// For the admin BP/EP required-level editor — what level each outcome
+// must reach to count as meeting Basic/Enhanced Profile. Currently a
+// placeholder default (0029) everywhere until real Ofgem/DESNZ values
+// or sector-specific ones replace it; see RequiredLevelsEditor.
+export async function getIgpRequiredLevels(supabase: SupabaseClient): Promise<IgpRequiredLevels[]> {
+  const { data } = await supabase
+    .from("caf_igps")
+    .select("code, name, section_code, bp_required_level, ep_required_level")
+    .order("sort_order");
+  return (data ?? []).map((row) => ({
+    code: row.code,
+    name: row.name,
+    sectionCode: row.section_code,
+    bpRequiredLevel: row.bp_required_level,
+    epRequiredLevel: row.ep_required_level,
+  }));
 }
 
 /**

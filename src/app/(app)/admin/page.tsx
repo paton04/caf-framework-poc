@@ -2,12 +2,15 @@ import { redirect } from "next/navigation";
 import { AdminPanel } from "@/components/AdminPanel";
 import { AnnouncementForm } from "@/components/AnnouncementForm";
 import { ConfigurableListEditor } from "@/components/ConfigurableListEditor";
+import { RequiredLevelsEditor } from "@/components/RequiredLevelsEditor";
 import {
   getAllIgpCodes,
   getAnnouncement,
   getAuditLog,
   getConfigurableList,
+  getIgpRequiredLevels,
   getProfilesWithRoles,
+  getSectionNames,
   getSuppliers,
 } from "@/lib/caf-data/queries";
 import { getAdminUserStatuses } from "@/lib/caf-data/admin-queries";
@@ -22,17 +25,29 @@ export default async function AdminPage() {
   // User statuses needs the service_role key (SUPABASE_SERVICE_ROLE_KEY)
   // — not set up yet on a fresh environment, so this degrades to "no
   // status known" rather than breaking the whole page if it's missing.
-  const [profiles, igps, suppliers, auditLog, announcement, userStatuses, scopeItemTypes, essentialFunctions] =
-    await Promise.all([
-      getProfilesWithRoles(supabase),
-      getAllIgpCodes(supabase),
-      getSuppliers(supabase),
-      getAuditLog(supabase),
-      getAnnouncement(supabase),
-      getAdminUserStatuses().catch(() => null),
-      getConfigurableList(supabase, "scope_item_type"),
-      getConfigurableList(supabase, "essential_function"),
-    ]);
+  const [
+    profiles,
+    igps,
+    suppliers,
+    auditLog,
+    announcement,
+    userStatuses,
+    scopeItemTypes,
+    essentialFunctions,
+    requiredLevels,
+    sections,
+  ] = await Promise.all([
+    getProfilesWithRoles(supabase),
+    getAllIgpCodes(supabase),
+    getSuppliers(supabase),
+    getAuditLog(supabase),
+    getAnnouncement(supabase),
+    getAdminUserStatuses().catch(() => null),
+    getConfigurableList(supabase, "scope_item_type"),
+    getConfigurableList(supabase, "essential_function"),
+    getIgpRequiredLevels(supabase),
+    getSectionNames(supabase),
+  ]);
 
   const supplierAccess = Object.fromEntries(suppliers.map((s) => [s.userId, s.igpCodes]));
 
@@ -70,6 +85,19 @@ export default async function AdminPage() {
           items={essentialFunctions}
         />
       </div>
+
+      <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
+        BP/EP required levels
+      </h2>
+      <p className="page-sub">
+        What level each outcome must reach to count as meeting Basic
+        Profile or Enhanced Profile — set by the regulator, not the
+        assessor. Currently a uniform placeholder, not real published
+        Ofgem/DESNZ values (those aren&apos;t public — DESNZ shares the
+        equivalent table directly with regulated entities). Update these
+        once the real figures are confirmed.
+      </p>
+      <RequiredLevelsEditor outcomes={requiredLevels} sections={sections} />
 
       <h2 className="page-title" style={{ fontSize: 16, marginTop: 36 }}>
         Announcement

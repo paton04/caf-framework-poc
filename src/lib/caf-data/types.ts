@@ -179,6 +179,29 @@ export interface ConfigurableListItem {
   removed: boolean;
 }
 
+// What level an outcome must reach to count as meeting Basic Profile /
+// Enhanced Profile (caf_igps.bp_required_level / ep_required_level).
+// Set by the regulator, not the assessor — see RequiredLevelsEditor.
+// "not_applicable" covers outcomes with no partial tier at all, where
+// only Achieved is a meaningful target.
+export type RequiredLevel = "achieved" | "partially_achieved" | "not_applicable";
+
+export const requiredLevelLabel: Record<RequiredLevel, string> = {
+  achieved: "Achieved",
+  partially_achieved: "Partially achieved",
+  not_applicable: "Not applicable",
+};
+
+export const requiredLevelOrder: RequiredLevel[] = ["partially_achieved", "achieved", "not_applicable"];
+
+export interface IgpRequiredLevels {
+  code: string;
+  name: string;
+  sectionCode: string;
+  bpRequiredLevel: RequiredLevel | null;
+  epRequiredLevel: RequiredLevel | null;
+}
+
 export interface ScopeItem {
   id: string;
   name: string;

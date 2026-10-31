@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 import { getProgressReport, getProgressReportDetailRows } from "@/lib/caf-data/queries";
@@ -6,10 +7,10 @@ import { profileMetStatusLabel, statusLabel } from "@/lib/caf-data/types";
 // Same role gate as the report page itself (owner_admin/grc) — this
 // route doesn't go through that page's own redirect, so it needs its
 // own check rather than relying on it.
-function csvField(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-}
-
+//
+// A real two-sheet Excel workbook rather than a CSV with two stacked
+// blocks — Fiona asked for Summary and Detail as separate tabs, which
+// a plain CSV can't express (one file, one sheet).
 export async function GET() {
   const { role } = await getSessionAndRole();
   if (role !== "owner_admin" && role !== "grc") {
@@ -22,49 +23,65 @@ export async function GET() {
     getProgressReportDetailRows(supabase),
   ]);
 
-  const rows: string[][] = [
-    ["Summary — rolled up across all scope items"],
-    [
-      "Section",
-      "Code",
-      "Outcome",
-      "Basic Profile status",
-      "Enhanced Profile status",
-      "Achieved",
-      "Partially achieved",
-      "Not achieved",
-      "Not started",
-      "Not applicable",
-    ],
+  const workbook = new ExcelJS.Workbook();
+  workbook.created = new Date();
+
+  const summarySheet = workbook.addWorksheet("Summary");
+  summarySheet.columns = [
+    { header: "Section", key: "section", width: 10 },
+    { header: "Code", key: "code", width: 10 },
+    { header: "Outcome", key: "outcome", width: 44 },
+    { header: "Basic Profile status", key: "bp", width: 18 },
+    { header: "Enhanced Profile status", key: "ep", width: 20 },
+    { header: "Achieved", key: "achieved", width: 10 },
+    { header: "Partially achieved", key: "partial", width: 16 },
+    { header: "Not achieved", key: "not", width: 12 },
+    { header: "Not started", key: "none", width: 12 },
+    { header: "Not applicable", key: "notApplicable", width: 14 },
   ];
+  summarySheet.getRow(1).font = { bold: true };
   for (const sec of report.sections) {
     for (const o of sec.outcomes) {
-      rows.push([
-        sec.code,
-        o.code,
-        o.name,
-        profileMetStatusLabel[o.bpStatus],
-        profileMetStatusLabel[o.epStatus],
-        String(o.achieved),
-        String(o.partial),
-        String(o.not),
-        String(o.none),
-        String(o.notApplicable),
-      ]);
+      summarySheet.addRow({
+        section: sec.code,
+        code: o.code,
+        outcome: o.name,
+        bp: profileMetStatusLabel[o.bpStatus],
+        ep: profileMetStatusLabel[o.epStatus],
+        achieved: o.achieved,
+        partial: o.partial,
+        not: o.not,
+        none: o.none,
+        notApplicable: o.notApplicable,
+      });
     }
   }
 
-  rows.push([], ["Detail — status by individual scope item"], ["Scope item", "Section", "Code", "Outcome", "Status"]);
+  const detailSheet = workbook.addWorksheet("Detail");
+  detailSheet.columns = [
+    { header: "Scope item", key: "scopeItem", width: 28 },
+    { header: "Section", key: "section", width: 10 },
+    { header: "Code", key: "code", width: 10 },
+    { header: "Outcome", key: "outcome", width: 44 },
+    { header: "Status", key: "status", width: 18 },
+  ];
+  detailSheet.getRow(1).font = { bold: true };
   for (const d of detailRows) {
-    rows.push([d.scopeItemName, d.sectionCode, d.outcomeCode, d.outcomeName, statusLabel[d.status]]);
+    detailSheet.addRow({
+      scopeItem: d.scopeItemName,
+      section: d.sectionCode,
+      code: d.outcomeCode,
+      outcome: d.outcomeName,
+      status: statusLabel[d.status],
+    });
   }
 
-  const csv = rows.map((r) => r.map(csvField).join(",")).join("\r\n");
+  const buffer = await workbook.xlsx.writeBuffer();
 
-  return new Response(csv, {
+  return new Response(buffer, {
     headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="caf-progress-report-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="caf-progress-report-${new Date().toISOString().slice(0, 10)}.xlsx"`,
     },
   });
 }

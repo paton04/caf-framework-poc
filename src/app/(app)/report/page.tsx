@@ -33,7 +33,7 @@ function StatusCell({ status, detail }: { status: ProgressReportOutcome["bpStatu
 // same "a link into the tool" approach already used elsewhere (e.g.
 // why the future Ofgem-assessor role was designed as a scoped role
 // rather than a PDF hand-off) — the data stays current and RLS/audit
-// stays intact. The CSV download and Print/Save-as-PDF button below
+// stays intact. The Excel download and Print/Save-as-PDF button below
 // are there for circulating a point-in-time copy when that's what's
 // actually needed, without that being the only way to see this.
 //
@@ -68,7 +68,7 @@ export default async function ReportPage() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <a className="btn-secondary" href="/report/download">
-            Download CSV
+            Download Excel
           </a>
           <PrintButton />
         </div>

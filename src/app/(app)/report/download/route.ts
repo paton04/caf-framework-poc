@@ -39,7 +39,20 @@ export async function GET() {
     { header: "Not started", key: "none", width: 12 },
     { header: "Not applicable", key: "notApplicable", width: 14 },
   ];
-  summarySheet.getRow(1).font = { bold: true };
+  // This file can be circulated standalone (emailed, dropped in a
+  // board pack) without anyone having seen the in-app report's own
+  // explanation — so BP/EP and the placeholder caveat get spelled out
+  // here too, not just inherited from the live page. Inserted above
+  // the header row, which this pushes from row 1 to row 2.
+  summarySheet.insertRow(1, [
+    "BP (Basic Profile) and EP (Enhanced Profile) are Ofgem/DESNZ's two CAF attainment tiers for the DGE sector. Required levels are currently an indicative placeholder, not confirmed Ofgem/DESNZ figures — a \"Not met\" may reflect that placeholder rather than a real compliance gap.",
+  ]);
+  summarySheet.getRow(2).font = { bold: true };
+  summarySheet.mergeCells(1, 1, 1, 10);
+  summarySheet.getRow(1).getCell(1).alignment = { wrapText: true };
+  summarySheet.getRow(1).font = { italic: true };
+  summarySheet.getRow(1).height = 30;
+
   for (const sec of report.sections) {
     for (const o of sec.outcomes) {
       summarySheet.addRow({

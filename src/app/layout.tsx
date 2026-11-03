@@ -37,7 +37,11 @@ const themeInitScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
+    // suppressHydrationWarning: themeInitScript sets data-theme on this
+    // element before React hydrates, so it never matches what the
+    // server rendered — an intentional, expected mismatch (that's the
+    // whole point of running before paint), not a real bug to fix.
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

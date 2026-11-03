@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PrintButton } from "@/components/PrintButton";
 import { getProgressReport } from "@/lib/caf-data/queries";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
 import { profileMetStatusClass, profileMetStatusLabel, type ProgressReportOutcome } from "@/lib/caf-data/types";
+
+// Overrides the root layout's shared title — otherwise this and every
+// other page suggest the same default filename when saved/printed as
+// a PDF, which is exactly the "exports all look the same" complaint
+// this was added for.
+export function generateMetadata(): Metadata {
+  const date = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return { title: `Progress Report — ${date}` };
+}
 
 // What's actually assessed per outcome, in brief — shown under each
 // Met/Not met pill so the verdict isn't a black box.

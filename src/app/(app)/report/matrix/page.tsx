@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PrintButton } from "@/components/PrintButton";
 import { ScopeItemMatrixPicker } from "@/components/ScopeItemMatrixPicker";
@@ -13,6 +14,28 @@ import {
 } from "@/lib/caf-data/types";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionAndRole } from "@/lib/auth";
+
+function todayLabel(): string {
+  return new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+// Same reasoning as /report's generateMetadata — without this, every
+// scope item's matrix suggests the same filename when saved as a PDF.
+// Named per scope item too, not just dated, since switching the
+// picker is the other way two exports from this one page would
+// otherwise look identical.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ scopeItemId?: string }>;
+}): Promise<Metadata> {
+  const supabase = await createClient();
+  const scopeItems = await getScopeItems(supabase);
+  const { scopeItemId } = await searchParams;
+  const selected = scopeItems.find((s) => s.id === scopeItemId) ?? scopeItems[0];
+  const name = selected ? (selected.isEnterprise ? "Enterprise-wide" : selected.name) : "Outcome Matrix";
+  return { title: `Outcome Matrix — ${name} — ${todayLabel()}` };
+}
 
 function Cell({ outcome, row }: { outcome: OutcomeMatrixOutcome; row: number }) {
   const cell = outcome.cells[row];
@@ -73,6 +96,7 @@ export default async function OutcomeMatrixPage({
 
       <div className="print-only">
         <h1 className="page-title">Outcome Matrix — {selected.isEnterprise ? "Enterprise-wide" : selected.name}</h1>
+        <p className="page-sub">Generated {todayLabel()}.</p>
       </div>
 
       {sections.map((sec) => (

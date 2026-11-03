@@ -9,6 +9,9 @@ import type {
   IgpStatement,
   IgpStatus,
   Notification,
+  OutcomeMatrixCell,
+  OutcomeMatrixOutcome,
+  OutcomeMatrixSection,
   ProfileMetStatus,
   ProfileWithRole,
   ProgressReport,
@@ -733,6 +736,109 @@ export async function getProgressReportDetailRows(supabase: SupabaseClient): Pro
     }
   }
   return rows;
+}
+
+function aggregateSectionStatus(outcomes: OutcomeMatrixOutcome[], pick: (o: OutcomeMatrixOutcome) => ProfileMetStatus): ProfileMetStatus {
+  const relevant = outcomes.map(pick).filter((s) => s !== "not_applicable");
+  if (relevant.length === 0) return "not_applicable";
+  if (relevant.some((s) => s === "no_data")) return "no_data";
+  return relevant.every((s) => s === "met") ? "met" : "not_met";
+}
+
+// The literal matrix from Simon's own sheet — one scope item (with the
+// usual enterprise-wide fallback per statement), outcomes across the
+// top, numbered sub-check rows down the side, one section per page.
+// Unlike getProgressReport this is real per-statement data for one
+// scope item, not a cross-scope aggregate — a raw yes/no answer
+// doesn't aggregate across multiple scope items the way a derived
+// outcome status does.
+export async function getOutcomeStatementMatrix(
+  supabase: SupabaseClient,
+  scopeItemId: string
+): Promise<OutcomeMatrixSection[]> {
+  const enterpriseId = await getEnterpriseScopeItemId(supabase);
+  const relevantScopeIds = [...new Set([scopeItemId, enterpriseId].filter((id): id is string => !!id))];
+
+  const [sectionsRes, igpsRes, statementsRes, outcomeStatusRes, statementStatusRes] = await Promise.all([
+    supabase.from("caf_sections").select("code, name, sort_order").order("sort_order"),
+    supabase
+      .from("caf_igps")
+      .select("code, section_code, name, sort_order, bp_required_level, ep_required_level")
+      .order("sort_order"),
+    supabase.from("caf_igp_statements").select("id, igp_code, statement_number"),
+    supabase.from("igp_assessments").select("igp_code, status").eq("scope_item_id", scopeItemId),
+    relevantScopeIds.length
+      ? supabase
+          .from("igp_statement_assessments")
+          .select("statement_id, scope_item_id, status")
+          .in("scope_item_id", relevantScopeIds)
+      : Promise.resolve({ data: [] as { statement_id: string; scope_item_id: string; status: StatementStatus }[] }),
+  ]);
+
+  const statements = statementsRes.data ?? [];
+
+  const ownStatusByStatement = new Map<string, StatementStatus>();
+  const enterpriseStatusByStatement = new Map<string, StatementStatus>();
+  for (const a of statementStatusRes.data ?? []) {
+    if (a.scope_item_id === scopeItemId) ownStatusByStatement.set(a.statement_id, a.status);
+    else if (enterpriseId && a.scope_item_id === enterpriseId) enterpriseStatusByStatement.set(a.statement_id, a.status);
+  }
+
+  const currentOutcomeStatus = new Map<string, IgpStatus>();
+  for (const row of outcomeStatusRes.data ?? []) {
+    currentOutcomeStatus.set(row.igp_code, row.status as IgpStatus);
+  }
+
+  const igps = igpsRes.data ?? [];
+
+  return (sectionsRes.data ?? []).map((sec) => {
+    const sectionIgps = igps.filter((i) => i.section_code === sec.code);
+    let maxRow = 0;
+
+    const outcomes: OutcomeMatrixOutcome[] = sectionIgps.map((igp) => {
+      const cells: Record<number, OutcomeMatrixCell> = {};
+      for (const s of statements.filter((row) => row.igp_code === igp.code)) {
+        const ownStatus = ownStatusByStatement.get(s.id);
+        const entStatus = enterpriseStatusByStatement.get(s.id);
+        cells[s.statement_number] = {
+          status: ownStatus ?? entStatus ?? "not_reviewed",
+          isEnterpriseWide: !ownStatus && !!entStatus,
+        };
+        if (s.statement_number > maxRow) maxRow = s.statement_number;
+      }
+
+      const bpRequiredLevel = igp.bp_required_level as RequiredLevel | null;
+      const epRequiredLevel = igp.ep_required_level as RequiredLevel | null;
+      // Single scope item, so the same cross-scope-rollup helper just
+      // runs with a "total" of one.
+      const status = currentOutcomeStatus.get(igp.code) ?? "none";
+      const counts = {
+        achieved: status === "achieved" ? 1 : 0,
+        partial: status === "partial" ? 1 : 0,
+        not: status === "not" ? 1 : 0,
+        notApplicable: status === "not_applicable" ? 1 : 0,
+      };
+
+      return {
+        code: igp.code,
+        name: igp.name,
+        bpRequiredLevel,
+        epRequiredLevel,
+        bpStatus: computeProfileStatus(bpRequiredLevel, counts, 1),
+        epStatus: computeProfileStatus(epRequiredLevel, counts, 1),
+        cells,
+      };
+    });
+
+    return {
+      code: sec.code,
+      name: sec.name,
+      maxRow,
+      outcomes,
+      bpSectionStatus: aggregateSectionStatus(outcomes, (o) => o.bpStatus),
+      epSectionStatus: aggregateSectionStatus(outcomes, (o) => o.epStatus),
+    };
+  });
 }
 
 export async function getEvidenceLibrary(

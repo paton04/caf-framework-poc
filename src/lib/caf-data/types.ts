@@ -194,6 +194,12 @@ export const requiredLevelLabel: Record<RequiredLevel, string> = {
 
 export const requiredLevelOrder: RequiredLevel[] = ["partially_achieved", "achieved", "not_applicable"];
 
+export const requiredLevelClass: Record<RequiredLevel, string> = {
+  achieved: "st-achieved",
+  partially_achieved: "st-partial",
+  not_applicable: "st-none",
+};
+
 export interface IgpRequiredLevels {
   code: string;
   name: string;
@@ -398,4 +404,39 @@ export interface ProgressReport {
   // profile — i.e. the denominator a Met count is really out of.
   bpTargetCount: number;
   epTargetCount: number;
+}
+
+// The literal matrix Simon's own sheet uses — one scope item, outcomes
+// across the top, numbered sub-check rows down the side. See
+// getOutcomeStatementMatrix. Unlike ProgressReport this isn't a
+// cross-scope rollup: every cell is one scope item's own real answer
+// (with the usual enterprise-wide fallback), not an aggregate.
+export interface OutcomeMatrixCell {
+  status: StatementStatus;
+  isEnterpriseWide: boolean;
+}
+
+export interface OutcomeMatrixOutcome {
+  code: string;
+  name: string;
+  bpRequiredLevel: RequiredLevel | null;
+  epRequiredLevel: RequiredLevel | null;
+  bpStatus: ProfileMetStatus;
+  epStatus: ProfileMetStatus;
+  // Keyed by statement_number (1-based, continuous per outcome — not
+  // a fixed row count across outcomes). Missing key = that outcome has
+  // no statement at that row.
+  cells: Record<number, OutcomeMatrixCell>;
+}
+
+export interface OutcomeMatrixSection {
+  code: string;
+  name: string;
+  maxRow: number;
+  outcomes: OutcomeMatrixOutcome[];
+  // Aggregate across every outcome shown on this section's page — met
+  // only if all of them individually are (matches the single Met/Not
+  // Met badge Simon's sheet shows per page, not a per-outcome count).
+  bpSectionStatus: ProfileMetStatus;
+  epSectionStatus: ProfileMetStatus;
 }

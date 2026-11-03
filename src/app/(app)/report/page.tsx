@@ -74,6 +74,14 @@ export default async function ReportPage() {
         </div>
       </div>
 
+      <p className="page-sub no-print" style={{ marginTop: -12 }}>
+        Want the per-outcome sub-check detail instead — the same shape as SGN&apos;s own tracking sheet?{" "}
+        <a href="/report/matrix" style={{ color: "var(--accent)" }}>
+          View the Outcome Matrix
+        </a>
+        .
+      </p>
+
       {/* Print-only heading — the page-header-row above is hidden when
           printing (no-print), so the printed copy still gets a title. */}
       <div className="print-only">

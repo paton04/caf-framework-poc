@@ -1425,6 +1425,56 @@ tr:last-child td {
   table {
     page-break-inside: avoid;
   }
+  /* "a page per outcome section" — /report/matrix's own request. */
+  .matrix-section {
+    break-after: page;
+  }
+  .matrix-section:last-child {
+    break-after: auto;
+  }
+  .matrix-scroll {
+    overflow: visible;
+  }
+}
+
+/* OUTCOME MATRIX (/report/matrix) — Simon's own sheet shape: outcomes
+   across the top, numbered sub-checks down the side. A real grid
+   (border on every cell), unlike the rest of the app's borderless-row
+   tables, and small/dense since a section can have 20+ outcome
+   columns. */
+.matrix-scroll {
+  overflow-x: auto;
+  margin-bottom: 8px;
+}
+.matrix-table {
+  border-collapse: collapse;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.matrix-table th,
+.matrix-table td {
+  border: 1px solid var(--rule);
+  padding: 4px 8px;
+  text-align: center;
+}
+.matrix-table th {
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.matrix-row-label {
+  text-align: left !important;
+  position: sticky;
+  left: 0;
+  background: var(--panel);
+  font-weight: 500;
+  color: var(--ink);
+}
+.matrix-blank {
+  background: var(--surface-tint);
+}
+.matrix-table .status {
+  font-size: 10.5px;
+  padding: 2px 6px;
 }
 
 /* Long-form prose, used by /guide — the rest of the app is forms/

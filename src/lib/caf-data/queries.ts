@@ -336,8 +336,8 @@ async function getStatementsByIgp(
 /**
  * One scope item's full CAF assessment — every section/indicator, with
  * that item's own status/narrative/owner and evidence. This is the unit
- * of work per Zuber's restructure: B2.a can be Achieved for one scope
- * item and Not applicable for another, so assessment is keyed by
+ * of work per the scope-item restructure: B2.a can be Achieved for one
+ * scope item and Not applicable for another, so assessment is keyed by
  * (scope_item, igp), not by igp alone.
  */
 export async function getScopeItemAssessment(
@@ -745,7 +745,7 @@ function aggregateSectionStatus(outcomes: OutcomeMatrixOutcome[], pick: (o: Outc
   return relevant.every((s) => s === "met") ? "met" : "not_met";
 }
 
-// The literal matrix from Simon's own sheet — one scope item (with the
+// The literal matrix from a prospect's own sheet — one scope item (with the
 // usual enterprise-wide fallback per statement), outcomes across the
 // top, numbered sub-check rows down the side, one section per page.
 // Unlike getProgressReport this is real per-statement data for one

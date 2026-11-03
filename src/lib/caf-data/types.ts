@@ -67,8 +67,8 @@ export type StatementLevel = "partially_achieved" | "achieved";
 export type StatementStatus = "not_reviewed" | "yes" | "no" | "no_pending" | "yes_future_phase" | "not_in_scope";
 
 // Short answer labels for the one-click buttons on each sub-check. The
-// SGN-sheet codes they stand for (NO-100, YES-P2) are in the comments,
-// not the UI.
+// original tracking-sheet codes they stand for (NO-100, YES-P2) are in
+// the comments, not the UI.
 export const statementStatusLabel: Record<StatementStatus, string> = {
   not_reviewed: "Not answered",
   yes: "Yes",
@@ -406,8 +406,8 @@ export interface ProgressReport {
   epTargetCount: number;
 }
 
-// The literal matrix Simon's own sheet uses — one scope item, outcomes
-// across the top, numbered sub-check rows down the side. See
+// The literal matrix a prospect's own sheet uses — one scope item,
+// outcomes across the top, numbered sub-check rows down the side. See
 // getOutcomeStatementMatrix. Unlike ProgressReport this isn't a
 // cross-scope rollup: every cell is one scope item's own real answer
 // (with the usual enterprise-wide fallback), not an aggregate.
@@ -436,7 +436,8 @@ export interface OutcomeMatrixSection {
   outcomes: OutcomeMatrixOutcome[];
   // Aggregate across every outcome shown on this section's page — met
   // only if all of them individually are (matches the single Met/Not
-  // Met badge Simon's sheet shows per page, not a per-outcome count).
+  // Met badge the reference sheet shows per page, not a per-outcome
+  // count).
   bpSectionStatus: ProfileMetStatus;
   epSectionStatus: ProfileMetStatus;
 }

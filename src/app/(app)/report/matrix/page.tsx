@@ -25,10 +25,10 @@ function Cell({ outcome, row }: { outcome: OutcomeMatrixOutcome; row: number }) 
   );
 }
 
-// Same shape as Simon's own tracking sheet — outcomes across the top,
-// numbered sub-checks down the side, BP/EP baseline per outcome, one
-// section per (printed) page. A different thing from /report: this is
-// one scope item's own real answers (with the usual enterprise-wide
+// Same shape as a prospect's own tracking sheet — outcomes across the
+// top, numbered sub-checks down the side, BP/EP baseline per outcome,
+// one section per (printed) page. A different thing from /report: this
+// is one scope item's own real answers (with the usual enterprise-wide
 // fallback), not a cross-scope rollup — see getOutcomeStatementMatrix.
 export default async function OutcomeMatrixPage({
   searchParams,
@@ -54,8 +54,8 @@ export default async function OutcomeMatrixPage({
         <div>
           <h1 className="page-title">Outcome Matrix</h1>
           <p className="page-sub">
-            One scope item&apos;s own sub-check answers, laid out the way SGN&apos;s own tracking sheet does —
-            outcomes across the top, numbered sub-checks down the side.{" "}
+            One scope item&apos;s own sub-check answers, laid out as a matrix — outcomes across the top, numbered
+            sub-checks down the side.{" "}
             <a href="/report" style={{ color: "var(--accent)" }}>
               Back to the cross-scope Report
             </a>

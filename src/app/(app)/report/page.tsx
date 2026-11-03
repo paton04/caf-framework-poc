@@ -39,7 +39,7 @@ function StatusCell({ status, detail }: { status: ProgressReportOutcome["bpStatu
 //
 // Shape (rebuilt 2026-10-31): Met/Not met against the Basic/Enhanced
 // Profile required level per outcome, not raw status counts — matches
-// both SGN's own board sheet (BP Status: Met / EP Status: Met) and the
+// both a prospect's own board sheet (BP Status: Met / EP Status: Met) and the
 // UK government's own GovAssure CAF board-reporting template ("Summary
 // of Contributing Outcomes and Target CAF Profile Achievement"). See
 // docs/v2-rearchitecture-design.md and the 2026-10-31 project memory
@@ -75,7 +75,7 @@ export default async function ReportPage() {
       </div>
 
       <p className="page-sub no-print" style={{ marginTop: -12 }}>
-        Want the per-outcome sub-check detail instead — the same shape as SGN&apos;s own tracking sheet?{" "}
+        Want the per-outcome sub-check detail instead — outcomes across the top, sub-checks down the side?{" "}
         <a href="/report/matrix" style={{ color: "var(--accent)" }}>
           View the Outcome Matrix
         </a>

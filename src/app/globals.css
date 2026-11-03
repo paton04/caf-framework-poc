@@ -1437,7 +1437,7 @@ tr:last-child td {
   }
 }
 
-/* OUTCOME MATRIX (/report/matrix) — Simon's own sheet shape: outcomes
+/* OUTCOME MATRIX (/report/matrix) — a prospect's own sheet shape: outcomes
    across the top, numbered sub-checks down the side. A real grid
    (border on every cell), unlike the rest of the app's borderless-row
    tables, and small/dense since a section can have 20+ outcome
